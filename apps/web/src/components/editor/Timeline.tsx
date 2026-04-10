@@ -25,9 +25,15 @@ import {
   Rows3,
   Rows2,
 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 import { useProjectStore } from "../../stores/project-store";
 import { useTimelineStore } from "../../stores/timeline-store";
 import { useUIStore } from "../../stores/ui-store";
+import {
+  cloneDefaultWidgetConfig,
+  useSignageWidgetStore,
+} from "../../stores/signage-widget-store";
+import type { SignageWidgetType } from "../../types/widgets";
 import { toast } from "../../stores/notification-store";
 import { useEngineStore } from "../../stores/engine-store";
 import { getPlaybackBridge } from "../../bridges/playback-bridge";
@@ -102,7 +108,13 @@ export const Timeline: React.FC = () => {
 
   const { select, selectMultiple, clearSelection, getSelectedClipIds, snapSettings, toggleSnap } =
     useUIStore();
+  const selectedItems = useUIStore((state) => state.selectedItems);
+  const widgets = useSignageWidgetStore((state) => state.widgets);
+  const addWidget = useSignageWidgetStore((state) => state.addWidget);
+  const updateWidget = useSignageWidgetStore((state) => state.updateWidget);
+  const removeWidget = useSignageWidgetStore((state) => state.removeWidget);
   const selectedClipIds = getSelectedClipIds();
+  const selectedWidgetId = selectedItems.find((item) => item.type === "widget")?.id;
 
   const { getTitleEngine, getGraphicsEngine } = useEngineStore();
   const titleEngine = getTitleEngine();
@@ -147,16 +159,158 @@ export const Timeline: React.FC = () => {
         if (end > maxEnd) maxEnd = end;
       }
     }
+    for (const widget of widgets) {
+      const end = widget.startTime + widget.duration;
+      if (end > maxEnd) maxEnd = end;
+    }
     return Math.max(maxEnd, 60); // Minimum 60 seconds
-  }, [tracks]);
+  }, [tracks, widgets]);
 
   const totalTracksHeight = useMemo(() => {
     let height = 0;
     for (const track of tracks) {
       height += getTrackHeight(track.id);
     }
+    height += widgets.length * 56;
     return height;
-  }, [tracks, getTrackHeight]);
+  }, [tracks, getTrackHeight, widgets.length]);
+
+  const widgetColorMap: Record<
+    SignageWidgetType,
+    { labelBg: string; blockBg: string; text: string }
+  > = {
+    calendar: { labelBg: "#2e5c2e", blockBg: "#3a7a3a", text: "#e6ffe6" },
+    chart: { labelBg: "#2e3a5c", blockBg: "#3a4a7a", text: "#e6edff" },
+    clock: { labelBg: "#5c522e", blockBg: "#7a6e3a", text: "#fffae6" },
+    countdown: { labelBg: "#5c2e5c", blockBg: "#7a3a7a", text: "#ffe6ff" },
+    iframe: { labelBg: "#3d3d5c", blockBg: "#52527a", text: "#e6e6ff" },
+    pdf: { labelBg: "#5c3333", blockBg: "#7a4444", text: "#ffe6e6" },
+    powerpoint: { labelBg: "#5c4433", blockBg: "#7a5c44", text: "#ffece6" },
+    ticker: { labelBg: "#335c66", blockBg: "#447a8a", text: "#e6f7ff" },
+  };
+
+  const [draggingWidgetId, setDraggingWidgetId] = useState<string | null>(null);
+  const [dragOffsetSeconds, setDragOffsetSeconds] = useState(0);
+  const [resizingWidget, setResizingWidget] = useState<{
+    id: string;
+    edge: "start" | "end";
+  } | null>(null);
+  const [widgetMenu, setWidgetMenu] = useState<{
+    widgetId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const getSnappedTime = useCallback(
+    (candidate: number) => {
+      if (!snapSettings.enabled) return Math.max(0, candidate);
+      const threshold = snapSettings.snapThreshold / pixelsPerSecond;
+      const allSnapPoints = [
+        playheadPosition,
+        ...tracks.flatMap((track) =>
+          track.clips.flatMap((clip) => [clip.startTime, clip.startTime + clip.duration]),
+        ),
+        ...widgets.flatMap((widget) => [widget.startTime, widget.startTime + widget.duration]),
+      ];
+      let best = candidate;
+      let bestDist = Infinity;
+      for (const point of allSnapPoints) {
+        const dist = Math.abs(point - candidate);
+        if (dist < threshold && dist < bestDist) {
+          bestDist = dist;
+          best = point;
+        }
+      }
+      return Math.max(0, best);
+    },
+    [snapSettings, pixelsPerSecond, playheadPosition, tracks, widgets],
+  );
+
+  useEffect(() => {
+    if (!draggingWidgetId && !resizingWidget) return;
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!tracksRef.current) return;
+      const rect = tracksRef.current.getBoundingClientRect();
+      const x = event.clientX - rect.left + scrollX;
+      const pointerTime = Math.max(0, x / pixelsPerSecond);
+
+      if (draggingWidgetId) {
+        const nextStart = getSnappedTime(pointerTime - dragOffsetSeconds);
+        updateWidget(draggingWidgetId, { startTime: nextStart });
+      }
+
+      if (resizingWidget) {
+        const widget = widgets.find((item) => item.id === resizingWidget.id);
+        if (!widget) return;
+        const snappedTime = getSnappedTime(pointerTime);
+        if (resizingWidget.edge === "start") {
+          const end = widget.startTime + widget.duration;
+          const startTime = Math.max(0, Math.min(snappedTime, end - 0.2));
+          updateWidget(widget.id, {
+            startTime,
+            duration: Math.max(0.2, end - startTime),
+          });
+        } else {
+          const end = Math.max(widget.startTime + 0.2, snappedTime);
+          updateWidget(widget.id, { duration: Math.max(0.2, end - widget.startTime) });
+        }
+      }
+    };
+    const handleMouseUp = () => {
+      setDraggingWidgetId(null);
+      setResizingWidget(null);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [
+    draggingWidgetId,
+    resizingWidget,
+    dragOffsetSeconds,
+    pixelsPerSecond,
+    scrollX,
+    widgets,
+    updateWidget,
+    getSnappedTime,
+  ]);
+
+  useEffect(() => {
+    if (!selectedWidgetId) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        return;
+      }
+      const widget = widgets.find((item) => item.id === selectedWidgetId);
+      if (!widget) return;
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        removeWidget(widget.id);
+        clearSelection();
+        return;
+      }
+
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const step = event.shiftKey ? 1 : 0.1;
+        const delta = event.key === "ArrowLeft" ? -step : step;
+        updateWidget(widget.id, { startTime: Math.max(0, widget.startTime + delta) });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedWidgetId, widgets, updateWidget, removeWidget, clearSelection]);
+
+  useEffect(() => {
+    if (!widgetMenu) return;
+    const dismiss = () => setWidgetMenu(null);
+    window.addEventListener("click", dismiss);
+    return () => window.removeEventListener("click", dismiss);
+  }, [widgetMenu]);
 
   const trackHeightsMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -324,6 +478,11 @@ export const Timeline: React.FC = () => {
   }, [selectedClipIds, playheadPosition, splitClip]);
 
   const handleDelete = useCallback(async () => {
+    if (selectedWidgetId) {
+      removeWidget(selectedWidgetId);
+      clearSelection();
+      return;
+    }
     if (selectedClipIds.length === 0) return;
 
     for (const id of selectedClipIds) {
@@ -355,6 +514,8 @@ export const Timeline: React.FC = () => {
     deleteTextClip,
     deleteShapeClip,
     deleteSVGClip,
+    selectedWidgetId,
+    removeWidget,
   ]);
 
   const handleBackgroundClick = useCallback(() => {
@@ -954,7 +1115,7 @@ export const Timeline: React.FC = () => {
         <div className="flex-1 flex overflow-hidden">
           <div className="w-32 bg-background-secondary border-r border-border shrink-0 z-20 shadow-lg overflow-hidden">
             <div
-              className="flex flex-col"
+              className="flex flex-col pb-72"
               style={{ transform: `translateY(-${scrollY}px)` }}
             >
               {visualOrderTracks.map((track, i) => {
@@ -978,6 +1139,22 @@ export const Timeline: React.FC = () => {
                   </div>
                 );
               })}
+              {widgets.map((widget) => (
+                <div
+                  key={widget.id}
+                  className="h-14 px-2 border-b border-border/60 flex items-center bg-background-secondary/30"
+                >
+                  <div
+                    className="w-full rounded-md px-2 py-1 text-[10px] font-medium uppercase tracking-wide shadow-sm"
+                    style={{
+                      backgroundColor: widgetColorMap[widget.type].labelBg,
+                      color: widgetColorMap[widget.type].text,
+                    }}
+                  >
+                    {widget.type}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1060,6 +1237,22 @@ export const Timeline: React.FC = () => {
                 return;
               }
 
+              // Dragged signage widget from signage toolbar
+              const signageType = e.dataTransfer.getData("application/signage-widget");
+              if (signageType) {
+                addWidget({
+                  id: uuidv4(),
+                  type: signageType as SignageWidgetType,
+                  startTime: snappedTime,
+                  duration: 10,
+                  config: cloneDefaultWidgetConfig(signageType as SignageWidgetType),
+                  locked: false,
+                  hidden: false,
+                  layout: { x: 40, y: 40, width: 360, height: 220 },
+                });
+                return;
+              }
+
               // Internal drag from assets panel
               try {
                 const rawData = e.dataTransfer.getData("application/json");
@@ -1074,7 +1267,7 @@ export const Timeline: React.FC = () => {
           >
             <div
               style={{ width: `${timelineDuration * pixelsPerSecond}px` }}
-              className="min-w-full"
+              className="min-w-full pb-72"
             >
               {visualOrderTracks.map((track) => (
                 <TrackLane
@@ -1110,6 +1303,96 @@ export const Timeline: React.FC = () => {
                   selectedKeyframeIds={selectedKeyframeIds}
                 />
               ))}
+
+              {widgets.map((widget) => {
+                const blockLeft = widget.startTime * pixelsPerSecond;
+                const blockWidth = Math.max(40, widget.duration * pixelsPerSecond);
+                const isSelected = selectedWidgetId === widget.id;
+                const isLocked = Boolean(widget.locked);
+                const isHidden = Boolean(widget.hidden);
+                return (
+                  <div
+                    key={widget.id}
+                    className="relative h-14 border-b border-border/60 bg-background-secondary/10"
+                  >
+                    <button
+                      className={`absolute top-2 h-10 rounded-md text-xs font-normal px-3 text-left shadow transition-all ${
+                        isSelected ? "ring-2 ring-white/80" : ""
+                      }`}
+                      style={{
+                        left: blockLeft,
+                        width: blockWidth,
+                        backgroundColor: widgetColorMap[widget.type].blockBg,
+                        color: widgetColorMap[widget.type].text,
+                        opacity: isHidden ? 0.45 : 1,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        select({ type: "widget", id: widget.id });
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        select({ type: "widget", id: widget.id });
+                        setWidgetMenu({ widgetId: widget.id, x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseDown={(e) => {
+                        if (isLocked) return;
+                        e.stopPropagation();
+                        setDraggingWidgetId(widget.id);
+                        setDragOffsetSeconds(
+                          e.nativeEvent.offsetX / Math.max(1, pixelsPerSecond),
+                        );
+                      }}
+                    >
+                      <span className="uppercase">{widget.type}</span>
+                      <span className="ml-2 text-[10px] opacity-90">
+                        {widget.startTime.toFixed(1)}s -{" "}
+                        {(widget.startTime + widget.duration).toFixed(1)}s
+                      </span>
+                      {isLocked && <span className="ml-2 text-[10px]">🔒</span>}
+                      {isHidden && <span className="ml-1 text-[10px]">🙈</span>}
+                    </button>
+                    <div
+                      className="absolute top-2 w-2 h-10 cursor-ew-resize bg-black/30 hover:bg-black/50 rounded-l"
+                      style={{ left: Math.max(0, blockLeft - 1) }}
+                      onMouseDown={(e) => {
+                        if (isLocked) return;
+                        e.stopPropagation();
+                        select({ type: "widget", id: widget.id });
+                        setResizingWidget({ id: widget.id, edge: "start" });
+                      }}
+                    />
+                    <div
+                      className="absolute top-2 w-2 h-10 cursor-ew-resize bg-black/30 hover:bg-black/50 rounded-r"
+                      style={{ left: blockLeft + blockWidth - 7 }}
+                      onMouseDown={(e) => {
+                        if (isLocked) return;
+                        e.stopPropagation();
+                        select({ type: "widget", id: widget.id });
+                        setResizingWidget({ id: widget.id, edge: "end" });
+                      }}
+                    />
+                    {isSelected && (
+                      <div className="absolute right-3 top-3 flex items-center gap-2">
+                        <span className="text-[10px] text-text-muted">
+                          Drag to move, edge to resize, right click for menu
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeWidget(widget.id);
+                            clearSelection();
+                          }}
+                          className="text-[10px] px-2 py-1 bg-red-500/20 text-red-300 border border-red-500/40 rounded hover:bg-red-500/30"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               <BeatMarkerOverlay
                 pixelsPerSecond={pixelsPerSecond}
@@ -1161,6 +1444,67 @@ export const Timeline: React.FC = () => {
                   }}
                 />
               )}
+
+              {widgetMenu && (() => {
+                const widget = widgets.find((item) => item.id === widgetMenu.widgetId);
+                if (!widget) return null;
+                return (
+                  <div
+                    className="fixed z-[120] w-44 rounded-md border border-border bg-background-secondary shadow-2xl p-1"
+                    style={{ left: widgetMenu.x, top: widgetMenu.y }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-background-elevated"
+                      onClick={() => {
+                        addWidget({
+                          id: uuidv4(),
+                          type: widget.type,
+                          startTime: widget.startTime + 0.5,
+                          duration: widget.duration,
+                          config: structuredClone(widget.config),
+                          locked: false,
+                          hidden: widget.hidden,
+                          layout: widget.layout
+                            ? { ...widget.layout, x: widget.layout.x + 20, y: widget.layout.y + 20 }
+                            : { x: 40, y: 40, width: 360, height: 220 },
+                        });
+                        setWidgetMenu(null);
+                      }}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-background-elevated"
+                      onClick={() => {
+                        updateWidget(widget.id, { locked: !widget.locked });
+                        setWidgetMenu(null);
+                      }}
+                    >
+                      {widget.locked ? "Unlock" : "Lock"}
+                    </button>
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-background-elevated"
+                      onClick={() => {
+                        updateWidget(widget.id, { hidden: !widget.hidden });
+                        setWidgetMenu(null);
+                      }}
+                    >
+                      {widget.hidden ? "Show" : "Hide"}
+                    </button>
+                    <button
+                      className="w-full text-left px-2 py-1.5 text-xs rounded text-red-300 hover:bg-red-500/20"
+                      onClick={() => {
+                        removeWidget(widget.id);
+                        if (selectedWidgetId === widget.id) clearSelection();
+                        setWidgetMenu(null);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -173,8 +173,8 @@ export const TextClipComponent: React.FC<TextClipComponentProps> = ({
           } ${
             isSelected
               ? "ring-2 ring-amber-400 border-amber-400 z-10"
-              : "border-amber-500/30 hover:border-amber-500/60 hover:brightness-110"
-          } bg-amber-500/20 border`}
+              : "border-amber-500/60 hover:border-amber-500/80 hover:brightness-110"
+          } bg-amber-500/40 border`}
           style={{
             transform: `translateX(${left}px)`,
             width: `${Math.max(width, 40)}px`,
@@ -193,8 +193,8 @@ export const TextClipComponent: React.FC<TextClipComponentProps> = ({
             title="Drag to trim end"
           />
           <div className="w-full h-full flex items-center gap-1 px-3">
-            <Type size={12} className="text-amber-400 flex-shrink-0" />
-            <span className="text-[10px] font-medium text-amber-200 truncate">
+            <Type size={12} className="text-amber-100 flex-shrink-0" />
+            <span className="text-[10px] font-bold text-amber-50 drop-shadow-md truncate">
               {textClip.text || "Text"}
             </span>
           </div>

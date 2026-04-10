@@ -17,7 +17,8 @@ export type SelectionType =
   | "marker"
   | "text-clip"
   | "shape-clip"
-  | "subtitle";
+  | "subtitle"
+  | "widget";
 
 export interface SelectionItem {
   type: SelectionType;

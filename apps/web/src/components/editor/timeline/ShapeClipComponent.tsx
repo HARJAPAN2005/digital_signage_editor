@@ -188,8 +188,8 @@ export const ShapeClipComponent: React.FC<ShapeClipComponentProps> = ({
           } ${
             isSelected
               ? `ring-2 ring-${colorClass}-400 border-${colorClass}-400 z-10`
-              : `border-${colorClass}-500/30 hover:border-${colorClass}-500/60 hover:brightness-110`
-          } bg-${colorClass}-500/20 border`}
+              : `border-${colorClass}-500/60 hover:border-${colorClass}-500/80 hover:brightness-110`
+          } bg-${colorClass}-500/40 border`}
           style={{
             transform: `translateX(${left}px)`,
             width: `${Math.max(width, 40)}px`,
@@ -210,10 +210,10 @@ export const ShapeClipComponent: React.FC<ShapeClipComponentProps> = ({
           <div className="w-full h-full flex items-center gap-1 px-3">
             <IconComponent
               size={12}
-              className={`text-${colorClass}-400 flex-shrink-0`}
+              className={`text-${colorClass}-100 flex-shrink-0`}
             />
             <span
-              className={`text-[10px] font-medium text-${colorClass}-200 truncate`}
+              className={`text-[10px] font-bold text-${colorClass}-50 drop-shadow-md truncate`}
             >
               {shapeLabel}
             </span>

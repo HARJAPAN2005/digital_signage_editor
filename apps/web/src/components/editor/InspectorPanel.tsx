@@ -47,6 +47,8 @@ import {
   AudioTextSyncPanel,
   AlignmentSection,
 } from "./inspector";
+import { useSignageWidgetStore } from "../../stores/signage-widget-store";
+import { WidgetInspector } from "./widgets/WidgetInspector";
 import { OPENREEL_TTS_URL } from "../../config/api-endpoints";
 import {
   getAudioBridgeEffects,
@@ -184,6 +186,7 @@ export const InspectorPanel: React.FC = () => {
   const project = useProjectStore((state) => state.project);
   const { getSelectedClipIds } = useUIStore();
   const selectedItems = useUIStore((state) => state.selectedItems);
+  const widgets = useSignageWidgetStore((state) => state.widgets);
   const selectedClipIds = getSelectedClipIds();
   const getTitleEngine = useEngineStore((state) => state.getTitleEngine);
   const getGraphicsEngine = useEngineStore((state) => state.getGraphicsEngine);
@@ -207,6 +210,12 @@ export const InspectorPanel: React.FC = () => {
     if (!selectedSubtitleId) return null;
     return getSubtitle(selectedSubtitleId) || null;
   }, [selectedSubtitleId, getSubtitle, project.timeline.subtitles]);
+
+  const selectedWidget = useMemo(() => {
+    const widgetSelection = selectedItems.find((item) => item.type === "widget");
+    if (!widgetSelection) return null;
+    return widgets.find((widget) => widget.id === widgetSelection.id) || null;
+  }, [selectedItems, widgets]);
 
   // Get selected clip (check regular clips, text clips, and shape clips)
   const selectedClip = useMemo(() => {
@@ -610,7 +619,9 @@ export const InspectorPanel: React.FC = () => {
           Inspector
         </h3>
 
-        {selectedClip ? (
+        {selectedWidget ? (
+          <WidgetInspector widget={selectedWidget} />
+        ) : selectedClip ? (
           <>
             {/* Clip Info */}
             <div className="mb-4 p-3 bg-background-tertiary rounded-lg border border-border">

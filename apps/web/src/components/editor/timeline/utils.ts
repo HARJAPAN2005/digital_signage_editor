@@ -209,31 +209,31 @@ export const getClipStyle = (trackType: string): ClipStyle => {
   switch (trackType) {
     case "video":
       return {
-        bg: "bg-primary/10",
-        border: "border-primary/30",
-        text: "text-white/90",
-        selectedText: "text-white",
+        bg: "bg-primary/40",
+        border: "border-primary/60",
+        text: "text-white font-bold drop-shadow-md",
+        selectedText: "text-white font-black drop-shadow-lg",
       };
     case "audio":
       return {
-        bg: "bg-blue-500/10",
-        border: "border-blue-500/30",
-        text: "text-text-secondary",
-        selectedText: "text-blue-400",
+        bg: "bg-blue-500/40",
+        border: "border-blue-500/60",
+        text: "text-blue-50 font-bold drop-shadow-md",
+        selectedText: "text-white font-black drop-shadow-lg",
       };
     case "image":
       return {
-        bg: "bg-purple-500/10",
-        border: "border-purple-500/30",
-        text: "text-purple-300",
-        selectedText: "text-purple-400",
+        bg: "bg-purple-500/40",
+        border: "border-purple-500/60",
+        text: "text-purple-50 font-bold drop-shadow-md",
+        selectedText: "text-white font-black drop-shadow-lg",
       };
     default:
       return {
-        bg: "bg-gray-500/10",
-        border: "border-gray-500/30",
-        text: "text-text-secondary",
-        selectedText: "text-text-primary",
+        bg: "bg-gray-500/40",
+        border: "border-gray-500/60",
+        text: "text-gray-50 font-bold drop-shadow-md",
+        selectedText: "text-white font-black drop-shadow-lg",
       };
   }
 };

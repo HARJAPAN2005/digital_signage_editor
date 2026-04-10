@@ -43,6 +43,17 @@ import {
   type Track,
 } from "@openreel/core";
 import { useEngineStore } from "../../stores/engine-store";
+import { useSignageWidgetStore } from "../../stores/signage-widget-store";
+import type {
+  CalendarConfig,
+  ChartConfig,
+  ClockConfig,
+  CountdownConfig,
+  IframeConfig,
+  PDFConfig,
+  PowerPointConfig,
+  TickerConfig,
+} from "../../types/widgets";
 import {
   type HandlePosition,
   type InteractionMode,
@@ -66,6 +77,14 @@ import {
   ParticleRenderer,
 } from "./preview/index";
 import { ProcessingOverlay } from "./ProcessingOverlay";
+import { CalendarWidget } from "./widgets/CalendarWidget";
+import { ChartWidget } from "./widgets/ChartWidget";
+import { ClockWidget } from "./widgets/ClockWidget";
+import { CountdownWidget } from "./widgets/CountdownWidget";
+import { PDFWidget } from "./widgets/PDFWidget";
+import { PowerPointWidget } from "./widgets/PowerPointWidget";
+import { TickerWidget } from "./widgets/TickerWidget";
+import { IframeWidget } from "./widgets/IframeWidget";
 import type { MotionPathConfig, GSAPMotionPathPoint } from "@openreel/core";
 
 const getAdaptivePoolSize = (width: number, height: number): number => {
@@ -227,6 +246,8 @@ export const Preview: React.FC = () => {
   ];
 
   const isDark = useThemeStore((state) => state.isDark);
+  const widgets = useSignageWidgetStore((state) => state.widgets);
+  const updateWidget = useSignageWidgetStore((state) => state.updateWidget);
 
   // Canvas interaction state for resize/move
   const [interactionMode, setInteractionMode] =
@@ -371,12 +392,17 @@ export const Preview: React.FC = () => {
   const isScrubbingRef = useRef(false);
 
   const selectedItems = useUIStore((state) => state.selectedItems);
+  const select = useUIStore((state) => state.select);
   const cropMode = useUIStore((state) => state.cropMode);
   const cropClipId = useUIStore((state) => state.cropClipId);
   const setCropMode = useUIStore((state) => state.setCropMode);
   const exportState = useUIStore((state) => state.exportState);
   const motionPathMode = useUIStore((state) => state.motionPathMode);
   const motionPathClipId = useUIStore((state) => state.motionPathClipId);
+  const selectedWidgetId = useMemo(
+    () => selectedItems.find((item) => item.type === "widget")?.id,
+    [selectedItems],
+  );
 
   const {
     playheadPosition,
@@ -4623,6 +4649,227 @@ export const Preview: React.FC = () => {
   const cropMediaType = cropMediaData?.type ?? "video";
 
   const shouldShowCropMode = cropMode && cropClipId && cropClip && cropVideoSrc;
+  const [draggingWidget, setDraggingWidget] = useState<string | null>(null);
+  const [resizingWidget, setResizingWidget] = useState<{
+    id: string;
+    edge:
+      | "start"
+      | "end"
+      | "top"
+      | "bottom"
+      | "nw"
+      | "ne"
+      | "sw"
+      | "se";
+  } | null>(null);
+  const [lockWidgetAspectRatio, setLockWidgetAspectRatio] = useState(true);
+  const [widgetGuides, setWidgetGuides] = useState<{ x: number[]; y: number[] }>({
+    x: [],
+    y: [],
+  });
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!draggingWidget && !resizingWidget) return;
+
+    const snapValue = (value: number, candidates: number[]) => {
+      const threshold = 8;
+      let snapped = value;
+      let minDist = Infinity;
+      for (const candidate of candidates) {
+        const dist = Math.abs(value - candidate);
+        if (dist < threshold && dist < minDist) {
+          minDist = dist;
+          snapped = candidate;
+        }
+      }
+      return snapped;
+    };
+
+    const onMove = (event: MouseEvent) => {
+      if (!dragStartRef.current) return;
+      const dx = event.clientX - dragStartRef.current.x;
+      const dy = event.clientY - dragStartRef.current.y;
+      const targetId = draggingWidget ?? resizingWidget?.id;
+      if (!targetId) return;
+      const widget = widgets.find((item) => item.id === targetId);
+      if (!widget) return;
+      const layout = widget.layout ?? { x: 40, y: 40, width: 360, height: 220 };
+      const overlayRect = overlayRef.current?.getBoundingClientRect();
+      const maxWidth = overlayRect?.width ?? 1920;
+      const maxHeight = overlayRect?.height ?? 1080;
+      const guideX = [0, maxWidth / 2, maxWidth];
+      const guideY = [0, maxHeight / 2, maxHeight];
+
+      if (draggingWidget) {
+        const nextX = snapValue(layout.x + dx, guideX);
+        const nextY = snapValue(layout.y + dy, guideY);
+        updateWidget(targetId, {
+          layout: {
+            ...layout,
+            x: Math.max(0, Math.min(maxWidth - layout.width, nextX)),
+            y: Math.max(0, Math.min(maxHeight - layout.height, nextY)),
+          },
+        });
+        setWidgetGuides({ x: [nextX], y: [nextY] });
+      } else if (resizingWidget) {
+        const minW = 120;
+        const minH = 80;
+        const aspectRatio = layout.width / Math.max(1, layout.height);
+        if (resizingWidget.edge === "end") {
+          const nextWidth = Math.max(minW, snapValue(layout.width + dx, guideX));
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              width: nextWidth,
+              ...(lockWidgetAspectRatio ? { height: Math.max(minH, nextWidth / aspectRatio) } : {}),
+            },
+          });
+        } else if (resizingWidget.edge === "start") {
+          const nextWidth = Math.max(minW, layout.width - dx);
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              x: Math.max(0, layout.x + (layout.width - nextWidth)),
+              width: nextWidth,
+              ...(lockWidgetAspectRatio ? { height: Math.max(minH, nextWidth / aspectRatio) } : {}),
+            },
+          });
+        } else if (resizingWidget.edge === "bottom") {
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              height: Math.max(minH, snapValue(layout.height + dy, guideY)),
+              ...(lockWidgetAspectRatio
+                ? { width: Math.max(minW, (layout.height + dy) * aspectRatio) }
+                : {}),
+            },
+          });
+        } else if (resizingWidget.edge === "top") {
+          const nextHeight = Math.max(minH, layout.height - dy);
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              y: Math.max(0, layout.y + (layout.height - nextHeight)),
+              height: nextHeight,
+              ...(lockWidgetAspectRatio ? { width: Math.max(minW, nextHeight * aspectRatio) } : {}),
+            },
+          });
+        } else if (resizingWidget.edge === "se") {
+          const nextWidth = Math.max(minW, layout.width + dx);
+          const nextHeight = lockWidgetAspectRatio
+            ? Math.max(minH, nextWidth / aspectRatio)
+            : Math.max(minH, layout.height + dy);
+          updateWidget(targetId, { layout: { ...layout, width: nextWidth, height: nextHeight } });
+        } else if (resizingWidget.edge === "sw") {
+          const nextWidth = Math.max(minW, layout.width - dx);
+          const nextHeight = lockWidgetAspectRatio
+            ? Math.max(minH, nextWidth / aspectRatio)
+            : Math.max(minH, layout.height + dy);
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              x: Math.max(0, layout.x + (layout.width - nextWidth)),
+              width: nextWidth,
+              height: nextHeight,
+            },
+          });
+        } else if (resizingWidget.edge === "ne") {
+          const nextWidth = Math.max(minW, layout.width + dx);
+          const nextHeight = lockWidgetAspectRatio
+            ? Math.max(minH, nextWidth / aspectRatio)
+            : Math.max(minH, layout.height - dy);
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              y: Math.max(0, layout.y + (layout.height - nextHeight)),
+              width: nextWidth,
+              height: nextHeight,
+            },
+          });
+        } else {
+          const nextWidth = Math.max(minW, layout.width - dx);
+          const nextHeight = lockWidgetAspectRatio
+            ? Math.max(minH, nextWidth / aspectRatio)
+            : Math.max(minH, layout.height - dy);
+          updateWidget(targetId, {
+            layout: {
+              ...layout,
+              x: Math.max(0, layout.x + (layout.width - nextWidth)),
+              y: Math.max(0, layout.y + (layout.height - nextHeight)),
+              width: nextWidth,
+              height: nextHeight,
+            },
+          });
+        }
+        setWidgetGuides({ x: [layout.x, layout.x + layout.width], y: [layout.y, layout.y + layout.height] });
+      }
+
+      dragStartRef.current = { x: event.clientX, y: event.clientY };
+    };
+    const onUp = () => {
+      setDraggingWidget(null);
+      setResizingWidget(null);
+      setWidgetGuides({ x: [], y: [] });
+      dragStartRef.current = null;
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [
+    draggingWidget,
+    resizingWidget,
+    widgets,
+    updateWidget,
+    lockWidgetAspectRatio,
+  ]);
+
+  const activeWidgets = useMemo(
+    () =>
+      widgets.filter(
+        (widget) =>
+          !widget.hidden &&
+          playheadPosition >= widget.startTime &&
+          playheadPosition <= widget.startTime + widget.duration,
+      ),
+    [widgets, playheadPosition],
+  );
+
+  const renderWidgetContent = useCallback(
+    (widget: (typeof activeWidgets)[number], widgetTime: number) => {
+      if (widget.type === "clock") {
+        return <ClockWidget config={widget.config as ClockConfig} />;
+      }
+      if (widget.type === "countdown") {
+        return <CountdownWidget config={widget.config as CountdownConfig} />;
+      }
+      if (widget.type === "ticker") {
+        return <TickerWidget config={widget.config as TickerConfig} />;
+      }
+      if (widget.type === "pdf") {
+        return <PDFWidget config={widget.config as PDFConfig} currentTime={widgetTime} />;
+      }
+      if (widget.type === "iframe") {
+        return <IframeWidget config={widget.config as IframeConfig} />;
+      }
+      if (widget.type === "powerpoint") {
+        return (
+          <PowerPointWidget
+            config={widget.config as PowerPointConfig}
+            currentTime={widgetTime}
+          />
+        );
+      }
+      if (widget.type === "chart") {
+        return <ChartWidget config={widget.config as ChartConfig} />;
+      }
+      return <CalendarWidget config={widget.config as CalendarConfig} />;
+    },
+    [],
+  );
 
   return (
     <div
@@ -4686,6 +4933,171 @@ export const Preview: React.FC = () => {
 
           {/* Processing Overlay */}
           <ProcessingOverlay />
+
+          {activeWidgets.map((widget) => {
+            const widgetTime = Math.max(0, playheadPosition - widget.startTime);
+            const layout = widget.layout ?? { x: 40, y: 40, width: 360, height: 220 };
+            const selected = selectedWidgetId === widget.id;
+            const isTicker = widget.type === "ticker";
+            const tickerConfig = isTicker ? (widget.config as TickerConfig) : null;
+            const baseWidth = 360;
+            const baseHeight = 220;
+            const fitScale = isTicker
+              ? 1
+              : Math.max(
+                  0.25,
+                  Math.min(
+                    layout.width / Math.max(1, baseWidth),
+                    layout.height / Math.max(1, baseHeight),
+                  ),
+                );
+            return (
+              <div
+                key={widget.id}
+                className={`absolute z-30 rounded-md border ${
+                  selected ? "border-primary ring-2 ring-primary/50" : "border-transparent"
+                }`}
+                style={{
+                  position: "absolute",
+                  ...(isTicker
+                    ? {
+                        left: 0,
+                        right: 0,
+                        width: "100%",
+                        height: Math.max(40, layout.height),
+                        ...(tickerConfig?.position === "top" ? { top: 0 } : { bottom: 0 }),
+                      }
+                    : {
+                        left: layout.x,
+                        top: layout.y,
+                        width: layout.width,
+                        height: layout.height,
+                      }),
+                  overflow: "hidden",
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (!widget.locked) {
+                    setDraggingWidget(widget.id);
+                    dragStartRef.current = { x: e.clientX, y: e.clientY };
+                  }
+                  select({ type: "widget", id: widget.id });
+                }}
+              >
+                <div className="relative w-full h-full overflow-hidden rounded-md bg-black/30">
+                  {isTicker ? (
+                    renderWidgetContent(widget, widgetTime)
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+                      <div
+                        style={{
+                          width: baseWidth,
+                          height: baseHeight,
+                          transform: `scale(${fitScale})`,
+                          transformOrigin: "center center",
+                        }}
+                      >
+                        {renderWidgetContent(widget, widgetTime)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {selected && !widget.locked && !isTicker && (
+                  <>
+                    <button
+                      className="absolute -top-7 right-0 text-[10px] px-2 py-1 rounded bg-black/70 text-white border border-white/20"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLockWidgetAspectRatio((prev) => !prev);
+                      }}
+                    >
+                      {lockWidgetAspectRatio ? "Aspect: Locked" : "Aspect: Free"}
+                    </button>
+                    <div
+                      className="absolute -right-2 top-1/2 -translate-y-1/2 w-3 h-8 cursor-ew-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "end" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-8 cursor-ew-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "start" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-8 h-3 cursor-ns-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "bottom" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 -top-2 w-8 h-3 cursor-ns-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "top" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute -left-2 -top-2 w-3 h-3 cursor-nwse-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "nw" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute -right-2 -top-2 w-3 h-3 cursor-nesw-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "ne" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute -left-2 -bottom-2 w-3 h-3 cursor-nesw-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "sw" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                    <div
+                      className="absolute -right-2 -bottom-2 w-3 h-3 cursor-nwse-resize bg-primary rounded"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizingWidget({ id: widget.id, edge: "se" });
+                        dragStartRef.current = { x: e.clientX, y: e.clientY };
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {widgetGuides.x.map((x, index) => (
+            <div
+              key={`guide-x-${index}-${x}`}
+              className="absolute top-0 bottom-0 w-px bg-cyan-400/80 pointer-events-none z-40"
+              style={{ left: x }}
+            />
+          ))}
+          {widgetGuides.y.map((y, index) => (
+            <div
+              key={`guide-y-${index}-${y}`}
+              className="absolute left-0 right-0 h-px bg-cyan-400/80 pointer-events-none z-40"
+              style={{ top: y }}
+            />
+          ))}
 
           {/* Motion Path Overlay */}
           {motionPathMode && motionPathConfig && motionPathClip && (

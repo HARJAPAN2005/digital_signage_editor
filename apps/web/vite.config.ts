@@ -1,10 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import dts from "vite-plugin-dts";
 import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), dts({ include: ["src/embed.ts"] })],
   assetsInclude: ["**/*.wasm"],
   resolve: {
     alias: {
@@ -20,21 +21,18 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
+    lib: {
+      entry: path.resolve(__dirname, "src/embed.ts"),
+      name: "OpenReelEditor",
+      fileName: (format) => `openreel.${format}.js`,
+    },
     rollupOptions: {
+      // make sure to externalize react dependencies so they aren't bundled
+      external: ["react", "react-dom"],
       output: {
-        manualChunks: (id) => {
-          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
-            return "react";
-          }
-          if (id.includes("node_modules/zustand")) {
-            return "zustand";
-          }
-          if (id.includes("node_modules/three")) {
-            return "three";
-          }
-          if (id.includes("node_modules/@radix-ui")) {
-            return "radix";
-          }
+        globals: {
+          react: "React",
+          "react-dom": "ReactDOM",
         },
       },
     },
@@ -42,13 +40,13 @@ export default defineConfig({
   server: {
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Embedder-Policy": "credentialless",
     },
   },
   preview: {
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Embedder-Policy": "credentialless",
     },
   },
 });
