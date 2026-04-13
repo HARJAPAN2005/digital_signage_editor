@@ -4,6 +4,15 @@
 
 This repository contains the source code for a fully-featured, client-side digital signage editor. Built with React, TypeScript, WebCodecs, and WebGPU, it allows users to edit video, add tickers, clocks, and charts entirely in the browser without server-side processing.
 
+### Next.js integration documentation
+
+If you are embedding the published `@openreel/web` SDK in a Next.js app, use these guides:
+
+- **[OPENREEL_NEXTJS_INTEGRATION.md](./OPENREEL_NEXTJS_INTEGRATION.md)** — Full integration reference: install paths, COOP/COEP headers, client-only loading, CSS, assets, rebuild expectations, and troubleshooting.
+- **[OPENREEL_NEXTJS_AGENT_RUNBOOK.md](./OPENREEL_NEXTJS_AGENT_RUNBOOK.md)** — Checklist for implementers or automation: ordered steps, files to touch, failure modes, and done criteria.
+
+The section **SDK Integration Testing Guide** below is a short quick start; when anything disagrees with the two documents above, **trust the dedicated integration docs first** (they track edge cases such as header scoping and `ssr: false`).
+
 ---
 
 ## Features
@@ -17,22 +26,19 @@ This repository contains the source code for a fully-featured, client-side digit
 
 ## SDK Integration Testing Guide
 
-To test this SDK in a new Next.js project (or your main application), follow these exact steps:
+To smoke-test the SDK in a Next.js project, follow these steps. For production integration, follow [OPENREEL_NEXTJS_INTEGRATION.md](./OPENREEL_NEXTJS_INTEGRATION.md) and use [OPENREEL_NEXTJS_AGENT_RUNBOOK.md](./OPENREEL_NEXTJS_AGENT_RUNBOOK.md) as a checklist.
 
 ### 1. Installation
 
 Install the editor directly from this GitHub repository into your Next.js project. Ensure you use the exact workspace fragment syntax.
 
-**If using NPM:**
-```bash
-npm install git+https://github.com/HARJAPAN2005/digital_signage_editor.git
-```
+**If using NPM:** install from a packed tarball or a published registry artifact if available; see [OPENREEL_NEXTJS_INTEGRATION.md §1](./OPENREEL_NEXTJS_INTEGRATION.md#1-install-the-sdk).
 
-**If using PNPM (Recommended):**
+**If using PNPM (recommended for this monorepo):**
 ```bash
-pnpm add github:HARJAPAN2005/digital_signage_editor.git#workspace=@openreel/web
+pnpm add "@openreel/web@github:augani/openreel#main:apps/web"
 ```
-*(Note: Ensure this repository's `apps/web/dist` folder is fully committed to GitHub before running the install!)*
+Pin the branch or tag instead of `main` for reproducible builds. Ensure `apps/web/dist` exists at the pinned revision (or build the package locally) before consuming from Git.
 
 ### 2. Next.js Security Headers (CRITICAL)
 
