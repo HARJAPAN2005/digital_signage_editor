@@ -1,27 +1,61 @@
 import { create } from "zustand";
 import type {
+  AudioWidgetConfig,
   CalendarConfig,
   ChartConfig,
   ClockConfig,
   CountdownConfig,
+  DatasetTickerConfig,
+  DatasetViewConfig,
+  EmbeddedConfig,
+  FlashConfig,
+  HLSConfig,
+  HtmlPackageConfig,
+  ImageWidgetConfig,
   IframeConfig,
+  LocalVideoConfig,
+  NotificationConfig,
   PDFConfig,
   PowerPointConfig,
+  ShellCommandConfig,
   SignageWidget,
   SignageWidgetType,
+  SpacerConfig,
+  SubPlaylistConfig,
+  TextWidgetConfig,
   TickerConfig,
+  VideoInConfig,
+  VideoWidgetConfig,
+  WebpageConfig,
   WidgetConfig,
 } from "../types/widgets";
 
 type DefaultConfigs = {
+  audio: AudioWidgetConfig;
   calendar: CalendarConfig;
   chart: ChartConfig;
   clock: ClockConfig;
   countdown: CountdownConfig;
+  datasetTicker: DatasetTickerConfig;
+  datasetView: DatasetViewConfig;
+  embedded: EmbeddedConfig;
+  flash: FlashConfig;
+  hls: HLSConfig;
+  htmlPackage: HtmlPackageConfig;
+  image: ImageWidgetConfig;
   iframe: IframeConfig;
+  localVideo: LocalVideoConfig;
+  notification: NotificationConfig;
   pdf: PDFConfig;
   powerpoint: PowerPointConfig;
+  shellCommand: ShellCommandConfig;
+  spacer: SpacerConfig;
+  subPlaylist: SubPlaylistConfig;
+  text: TextWidgetConfig;
   ticker: TickerConfig;
+  video: VideoWidgetConfig;
+  videoIn: VideoInConfig;
+  webpage: WebpageConfig;
 };
 
 interface SignageWidgetState {
@@ -33,6 +67,10 @@ interface SignageWidgetState {
 }
 
 export const defaultConfigs: DefaultConfigs = {
+  audio: {
+    audioUrl: "",
+    title: "Now Playing",
+  },
   calendar: {
     calendarUrl: "",
     displayMode: "month",
@@ -68,6 +106,43 @@ export const defaultConfigs: DefaultConfigs = {
     color: "#ffffff",
     position: { x: 40, y: 90 },
   },
+  datasetTicker: {
+    title: "Updates",
+    entries: ["Welcome", "Store opens at 9 AM", "New offers available now"],
+    speed: 60,
+    backgroundColor: "#111827",
+    textColor: "#ffffff",
+  },
+  datasetView: {
+    title: "Dataset View",
+    columns: ["Name", "Value"],
+    rows: [
+      ["Alpha", "120"],
+      ["Beta", "95"],
+      ["Gamma", "140"],
+    ],
+    headerBackground: "#1f2937",
+  },
+  embedded: {
+    embedUrl: "https://example.com",
+    title: "Embedded Content",
+  },
+  flash: {
+    sourceUrl: "",
+    fallbackText: "Flash content is not supported in modern browsers.",
+  },
+  hls: {
+    streamUrl: "",
+    autoplay: true,
+    muted: true,
+  },
+  htmlPackage: {
+    html: "<div style='color:white;font-family:sans-serif;padding:16px'>HTML Package</div>",
+  },
+  image: {
+    imageUrl: "",
+    objectFit: "contain",
+  },
   iframe: {
     src: "https://www.w3schools.com",
     title: "Embedded content",
@@ -78,6 +153,18 @@ export const defaultConfigs: DefaultConfigs = {
     borderRadius: 8,
     zoom: 1,
     transparentBackground: false,
+  },
+  localVideo: {
+    videoUrl: "",
+    loop: true,
+    muted: true,
+  },
+  notification: {
+    title: "Notification",
+    message: "Your scheduled content is live.",
+    level: "info",
+    backgroundColor: "#1f2937",
+    textColor: "#ffffff",
   },
   pdf: {
     file: null,
@@ -91,6 +178,25 @@ export const defaultConfigs: DefaultConfigs = {
     totalSlides: 0,
     loop: true,
   },
+  shellCommand: {
+    command: "echo Digital Signage",
+    output: "Digital Signage",
+  },
+  spacer: {
+    backgroundColor: "#000000",
+  },
+  subPlaylist: {
+    items: ["Playlist Item 1", "Playlist Item 2", "Playlist Item 3"],
+    secondsPerItem: 5,
+  },
+  text: {
+    text: "Sample Text Widget",
+    fontSize: 32,
+    color: "#ffffff",
+    backgroundColor: "transparent",
+    textAlign: "center",
+    fontFamily: "Inter",
+  },
   ticker: {
     text: "Welcome to Digital Signage",
     speed: 50,
@@ -100,6 +206,20 @@ export const defaultConfigs: DefaultConfigs = {
     fontSize: 24,
     position: "bottom",
     refreshInterval: 60,
+  },
+  video: {
+    videoUrl: "",
+    loop: true,
+    muted: true,
+    autoplay: true,
+  },
+  videoIn: {
+    sourceName: "HDMI Input",
+    status: "No signal",
+  },
+  webpage: {
+    url: "https://www.example.com",
+    title: "Webpage",
   },
 };
 

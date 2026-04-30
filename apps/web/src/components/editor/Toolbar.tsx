@@ -1,7 +1,5 @@
 import React, { useCallback, useState, useEffect } from "react";
 import {
-  Search,
-  Command,
   ChevronDown,
   FileVideo,
   Film,
@@ -17,10 +15,6 @@ import {
   Zap,
   Circle,
   History,
-  HelpCircle,
-  Diamond,
-  Sparkles,
-  Play,
   Download,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/project-store";
@@ -42,12 +36,10 @@ import {
 import { ExportDialog } from "./ExportDialog";
 import { ScreenRecorder } from "./ScreenRecorder";
 import { HistoryPanel } from "./inspector/HistoryPanel";
-import { ProjectSwitcher } from "./ProjectSwitcher";
 import { SettingsDialog } from "./settings/SettingsDialog";
 import { toast } from "../../stores/notification-store";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useAnalytics, AnalyticsEvents } from "../../hooks/useAnalytics";
-import { startTour, ONBOARDING_KEY, startMoGraphTour, MOGRAPH_TOUR_KEY } from "./tour";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -83,13 +75,7 @@ interface ExportState {
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
   const {
-    openModal,
-    selectedItems,
     setExportState: setGlobalExportState,
-    keyframeEditorOpen,
-    toggleKeyframeEditor,
-    panels,
-    togglePanel,
   } = useUIStore();
   const { mode: themeMode, toggleTheme } = useThemeStore();
   const { navigate } = useRouter();
@@ -101,22 +87,6 @@ export const Toolbar: React.FC = () => {
   const { importMedia } = useProjectStore();
   const { track } = useAnalytics();
 
-  const handleStartTour = useCallback(() => {
-    localStorage.removeItem(ONBOARDING_KEY);
-    startTour();
-  }, []);
-
-  const handleStartMoGraphTour = useCallback(() => {
-    localStorage.removeItem(MOGRAPH_TOUR_KEY);
-    startMoGraphTour();
-  }, []);
-
-  const hasSelectedClip = selectedItems.some(
-    (item) =>
-      item.type === "clip" ||
-      item.type === "text-clip" ||
-      item.type === "shape-clip",
-  );
   const [exportState, setExportState] = useState<ExportState>({
     isExporting: false,
     progress: 0,
@@ -172,10 +142,6 @@ export const Toolbar: React.FC = () => {
 
     setExportEstimates(estimates);
   }, [deviceProfile, project.timeline?.duration, project.settings.width, project.settings.height]);
-
-  const handleSearch = useCallback(() => {
-    openModal("search");
-  }, [openModal]);
 
   const handleDownloadEditorState = useCallback(() => {
     const timestamp = new Date()
@@ -649,50 +615,9 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>Back to Home</TooltipContent>
         </Tooltip>
         <div className="h-6 w-px bg-border hidden md:block" />
-        <ProjectSwitcher />
       </div>
 
-      <div className="flex-1 max-w-2xl mx-12 relative group">
-        <div
-          className={`absolute inset-0 bg-primary/20 rounded-xl blur-md transition-opacity duration-300 ${
-            hasSelectedClip
-              ? "opacity-100 animate-pulse"
-              : "opacity-0 group-hover:opacity-100"
-          }`}
-        />
-        <button
-          onClick={handleSearch}
-          className={`relative w-full bg-background-secondary border rounded-xl h-10 flex items-center px-4 gap-3 transition-all text-left shadow-inner ${
-            hasSelectedClip
-              ? "border-primary/50 ring-1 ring-primary/30"
-              : "border-border group-hover:border-primary/50"
-          }`}
-        >
-          <Search
-            size={16}
-            className={`transition-colors ${
-              hasSelectedClip
-                ? "text-primary"
-                : "text-text-muted group-hover:text-primary"
-            }`}
-          />
-          <span
-            className={`flex-1 text-sm transition-colors ${
-              hasSelectedClip
-                ? "text-text-secondary"
-                : "text-text-muted group-hover:text-text-secondary"
-            }`}
-          >
-            {hasSelectedClip
-              ? "Search effects for selected clip..."
-              : "Search tools, effects, or ask AI..."}
-          </span>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-border bg-background-tertiary">
-            <Command size={10} className="text-text-muted" />
-            <span className="text-[10px] text-text-muted font-mono">K</span>
-          </div>
-        </button>
-      </div>
+      <div className="flex-1" />
 
       <div className="flex items-center gap-4">
         <Tooltip>
@@ -708,31 +633,6 @@ export const Toolbar: React.FC = () => {
             <p>Download editor state JSON</p>
           </TooltipContent>
         </Tooltip>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="p-2 rounded-lg hover:bg-background-elevated text-text-secondary hover:text-text-primary transition-colors"
-            >
-              <HelpCircle size={16} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={handleStartTour} className="gap-2">
-              <Play size={14} />
-              <span>Editor Tour</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleStartMoGraphTour} className="gap-2">
-              <Sparkles size={14} className="text-purple-400" />
-              <span>Animation & Effects Tour</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-text-muted">
-              <Command size={14} />
-              <span>Press ? for shortcuts</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -779,42 +679,6 @@ export const Toolbar: React.FC = () => {
           </TooltipTrigger>
           <TooltipContent>
             <p>Project JSON - Export/Import</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleKeyframeEditor}
-              className={`p-2 rounded-lg transition-colors ${
-                keyframeEditorOpen
-                  ? "bg-primary/20 text-primary"
-                  : "hover:bg-background-elevated text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <Diamond size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Keyframe Editor</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => togglePanel("audioMixer")}
-              className={`p-2 rounded-lg transition-colors ${
-                panels.audioMixer?.visible
-                  ? "bg-primary/20 text-primary"
-                  : "hover:bg-background-elevated text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <Music size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Audio Mixer – track volume and master level</p>
           </TooltipContent>
         </Tooltip>
 

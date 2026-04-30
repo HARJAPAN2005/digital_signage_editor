@@ -1,6 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
-  Search,
   Maximize2,
   X,
   Image as ImageIcon,
@@ -24,6 +23,7 @@ import {
   List,
   Sparkles,
 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 import {
   BACKGROUND_PRESETS,
   generateBackgroundBlob,
@@ -32,6 +32,7 @@ import {
 import type { ShapeType } from "@openreel/core";
 import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
+import type { SignageWidgetType } from "../../types/widgets";
 import type { MediaItem } from "@openreel/core";
 import { AspectRatioMatchDialog } from "./dialogs/AspectRatioMatchDialog";
 import { AIGenTab } from "./AIGenTab";
@@ -40,7 +41,6 @@ import { toast } from "../../stores/notification-store";
 import { saveFileHandle, saveDirectoryHandle } from "../../services/media-storage";
 import {
   IconButton,
-  Input,
   ScrollArea,
   ContextMenu,
   ContextMenuContent,
@@ -50,6 +50,168 @@ import {
 import { KieAIImageDialog } from "./kieai/KieAIImageDialog";
 import { loadMediaBlob } from "../../services/media-storage";
 import { useKieAIStore } from "../../stores/kieai-store";
+import {
+  cloneDefaultWidgetConfig,
+  useSignageWidgetStore,
+} from "../../stores/signage-widget-store";
+
+const SIGNAGE_WIDGETS: {
+  type: SignageWidgetType;
+  icon: string;
+  label: string;
+  description: string;
+}[] = [
+  {
+    type: "image",
+    icon: "🖼️",
+    label: "Image",
+    description: "Render a static image from URL or media source.",
+  },
+  {
+    type: "video",
+    icon: "🎬",
+    label: "Video",
+    description: "Play a video clip inside the signage output.",
+  },
+  {
+    type: "audio",
+    icon: "🎵",
+    label: "Audio",
+    description: "Play an audio source with metadata.",
+  },
+  {
+    type: "calendar",
+    icon: "📅",
+    label: "Calendar",
+    description: "Display event calendars and schedules.",
+  },
+  {
+    type: "chart",
+    icon: "📊",
+    label: "Chart",
+    description: "Show live or static chart data overlays.",
+  },
+  {
+    type: "clock",
+    icon: "🕐",
+    label: "Clock",
+    description: "Display real-time timezone-aware clocks.",
+  },
+  {
+    type: "countdown",
+    icon: "⏱️",
+    label: "Countdown",
+    description: "Run countdowns for launches and events.",
+  },
+  {
+    type: "datasetTicker",
+    icon: "🧾",
+    label: "DataSet Ticker",
+    description: "Scrollable ticker driven by dataset entries.",
+  },
+  {
+    type: "datasetView",
+    icon: "🗂️",
+    label: "DataSet View",
+    description: "Table/grid view for structured dataset rows.",
+  },
+  {
+    type: "embedded",
+    icon: "🔗",
+    label: "Embedded",
+    description: "Embed external web content inside a widget frame.",
+  },
+  {
+    type: "flash",
+    icon: "⚡",
+    label: "Flash",
+    description: "Legacy flash placeholder with fallback messaging.",
+  },
+  {
+    type: "hls",
+    icon: "📡",
+    label: "HLS",
+    description: "Stream live HLS feeds from .m3u8 URLs.",
+  },
+  {
+    type: "htmlPackage",
+    icon: "📦",
+    label: "HTML Package",
+    description: "Render custom packaged HTML content.",
+  },
+  {
+    type: "iframe",
+    icon: "🪟",
+    label: "IFrame",
+    description: "Embed a website preview with custom sizing and position.",
+  },
+  {
+    type: "localVideo",
+    icon: "📹",
+    label: "Local Video",
+    description: "Play local/network video in signage canvas.",
+  },
+  {
+    type: "notification",
+    icon: "🔔",
+    label: "Notification",
+    description: "Show alert or announcement cards on screen.",
+  },
+  {
+    type: "pdf",
+    icon: "📄",
+    label: "PDF",
+    description: "Cycle through PDF pages in timeline.",
+  },
+  {
+    type: "powerpoint",
+    icon: "📑",
+    label: "PowerPoint",
+    description: "Convert and play PowerPoint slides.",
+  },
+  {
+    type: "shellCommand",
+    icon: "⌨️",
+    label: "Shell Command",
+    description: "Display command and output-style telemetry text.",
+  },
+  {
+    type: "spacer",
+    icon: "↕️",
+    label: "Spacer",
+    description: "Blank spacing block for structured layouts.",
+  },
+  {
+    type: "subPlaylist",
+    icon: "📚",
+    label: "Sub-Playlist",
+    description: "Cycle through a defined list of playlist items.",
+  },
+  {
+    type: "text",
+    icon: "🅰️",
+    label: "Text",
+    description: "Standalone text panel with typography control.",
+  },
+  {
+    type: "ticker",
+    icon: "📜",
+    label: "Ticker",
+    description: "Scrollable breaking-news style text strips.",
+  },
+  {
+    type: "videoIn",
+    icon: "📥",
+    label: "Video In",
+    description: "Input widget placeholder for external video feeds.",
+  },
+  {
+    type: "webpage",
+    icon: "🌐",
+    label: "Webpage",
+    description: "Display website content in signage.",
+  },
+];
 
 const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -520,13 +682,13 @@ const LoadingIndicator: React.FC<{ message: string }> = ({ message }) => (
 
 export const AssetsPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const backgroundInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTabRaw] = useState<
-    "media" | "text" | "graphics" | "ai"
+    "media" | "text" | "graphics" | "ai" | "widgets"
   >("media");
   const ttsHasUnsaved = useTtsAudioStore((s) => s.generatedAudio !== null && !s.isAudioSaved);
 
-  const setActiveTab = useCallback((tab: "media" | "text" | "graphics" | "ai") => {
+  const setActiveTab = useCallback((tab: "media" | "text" | "graphics" | "ai" | "widgets") => {
     if (activeTab === "ai" && tab !== "ai" && ttsHasUnsaved) {
       toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
     }
@@ -567,6 +729,7 @@ export const AssetsPanel: React.FC = () => {
 
   // KieAI store
   const { retryTask } = useKieAIStore();
+  const addWidget = useSignageWidgetStore((state) => state.addWidget);
 
   // UI store
   const { select, isSelected, startDrag } = useUIStore();
@@ -576,13 +739,10 @@ export const AssetsPanel: React.FC = () => {
     (item) => item.isPlaceholder,
   ).length;
 
-  // Filter media items by search query and missing assets toggle
+  // Filter media items by missing assets toggle
   const filteredItems = mediaItems.filter((item) => {
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
     const matchesFilter = showOnlyMissing ? item.isPlaceholder : true;
-    return matchesSearch && matchesFilter;
+    return matchesFilter;
   });
 
   // Handle file import with loading state
@@ -864,6 +1024,33 @@ export const AssetsPanel: React.FC = () => {
       backgroundCategory === "all" || preset.category === backgroundCategory,
   );
 
+  const handleCustomBackgroundUpload = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      if (!file.type.startsWith("image/")) {
+        toast.error("Unsupported file", "Please upload an image background.");
+        return;
+      }
+
+      setIsImporting(true);
+      setImportProgress(`Importing ${file.name}...`);
+      try {
+        const result = await importMedia(file);
+        if (result.success && result.actionId) {
+          const { addClipToNewTrack } = useProjectStore.getState();
+          await addClipToNewTrack(result.actionId);
+        }
+      } catch (error) {
+        console.error("Custom background upload failed:", error);
+      } finally {
+        setIsImporting(false);
+        setImportProgress("");
+      }
+    },
+    [importMedia],
+  );
+
   // Open KieAI dialog for an image asset
   const handleOpenKieAI = useCallback(async (item: MediaItem) => {
     try {
@@ -888,10 +1075,31 @@ export const AssetsPanel: React.FC = () => {
     retryTask(item.kieaiTaskId);
   }, [retryTask, setKieAIItemState]);
 
+  const handleAddWidget = useCallback(
+    (type: SignageWidgetType) => {
+      let layout = { x: 40, y: 40, width: 360, height: 220 };
+      if (type === "ticker") {
+        layout = { x: 40, y: 440, width: 800, height: 60 };
+      }
+
+      addWidget({
+        id: uuidv4(),
+        type,
+        startTime: 0,
+        duration: 10,
+        config: cloneDefaultWidgetConfig(type),
+        locked: false,
+        hidden: false,
+        layout,
+      });
+    },
+    [addWidget],
+  );
+
   return (
     <div
       data-tour="assets"
-      className="w-80 bg-background-secondary border-r border-border flex flex-col h-full relative"
+      className="w-[260px] bg-background-secondary border-r border-border flex flex-col h-full relative"
     >
       {/* Loading overlay */}
       {isImporting && (
@@ -914,7 +1122,7 @@ export const AssetsPanel: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex px-5 gap-6 border-b border-border text-xs font-medium text-text-muted mb-5">
+      <div className="flex px-5 gap-4 border-b border-border text-xs font-medium text-text-muted mb-5 overflow-x-auto">
         <button
           onClick={() => setActiveTab("media")}
           className={`pb-3 transition-all relative ${
@@ -938,6 +1146,19 @@ export const AssetsPanel: React.FC = () => {
         >
           Text
           {activeTab === "text" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(34,197,94,0.5)]" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("widgets")}
+          className={`pb-3 transition-all relative ${
+            activeTab === "widgets"
+              ? "text-text-primary"
+              : "hover:text-text-secondary"
+          }`}
+        >
+          Widgets
+          {activeTab === "widgets" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(34,197,94,0.5)]" />
           )}
         </button>
@@ -969,19 +1190,9 @@ export const AssetsPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* Search & view toggle - only show for media tab */}
+      {/* View toggle - only show for media tab */}
       {activeTab === "media" && (
-        <div className="px-5 mb-3 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" />
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search media"
-              className="pl-9 text-xs bg-background-tertiary border-border text-text-primary h-9"
-            />
-          </div>
+        <div className="px-5 mb-3 flex items-center justify-end">
           <div className="flex items-center bg-background-tertiary border border-border rounded-lg p-0.5">
             {([
               { mode: "large" as const, icon: LayoutGrid, title: "Large icons" },
@@ -1041,6 +1252,13 @@ export const AssetsPanel: React.FC = () => {
         multiple
         accept="video/*,audio/*,image/*"
         onChange={(e) => handleFileImport(e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={backgroundInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => handleCustomBackgroundUpload(e.target.files)}
         className="hidden"
       />
 
@@ -1128,6 +1346,12 @@ export const AssetsPanel: React.FC = () => {
                 <Palette size={12} />
                 Backgrounds
               </h4>
+              <button
+                onClick={() => backgroundInputRef.current?.click()}
+                className="px-2.5 py-1 text-[10px] rounded-md bg-background-tertiary text-text-secondary hover:text-text-primary border border-border hover:border-primary/50 transition-all"
+              >
+                Upload Custom
+              </button>
             </div>
             <div className="flex gap-1.5 mb-3 flex-wrap">
               {(["all", "solid", "gradient", "mesh", "pattern"] as const).map(
@@ -1446,6 +1670,40 @@ export const AssetsPanel: React.FC = () => {
 
       {/* AI Tab Content */}
       {activeTab === "ai" && <AIGenTab />}
+
+      {/* Widgets Tab Content */}
+      {activeTab === "widgets" && (
+        <ScrollArea className="flex-1">
+          <div className="px-5 pb-5 space-y-2">
+            {SIGNAGE_WIDGETS.map((widget) => (
+              <button
+                key={widget.type}
+                draggable
+                onDragStart={(event) => {
+                  event.dataTransfer.setData(
+                    "application/signage-widget",
+                    widget.type,
+                  );
+                  event.dataTransfer.effectAllowed = "copy";
+                }}
+                onClick={() => handleAddWidget(widget.type)}
+                className="w-full bg-background-tertiary hover:bg-background-elevated rounded-lg border border-border hover:border-primary/40 transition-all text-left px-3 py-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-text-primary text-xs font-medium">
+                    <span>{widget.icon}</span>
+                    <span>{widget.label}</span>
+                  </span>
+                  <Plus size={13} className="text-text-muted" />
+                </div>
+                <p className="text-[10px] text-text-muted mt-1.5">
+                  {widget.description}
+                </p>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
 
       {aspectRatioDialogData && (
         <AspectRatioMatchDialog

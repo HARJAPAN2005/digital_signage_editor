@@ -2,15 +2,32 @@ import React from "react";
 import { useSignageWidgetStore } from "../../../stores/signage-widget-store";
 import * as pdfjs from "pdfjs-dist";
 import type {
+  AudioWidgetConfig,
   CalendarConfig,
   ChartConfig,
   ClockConfig,
   CountdownConfig,
+  DatasetTickerConfig,
+  DatasetViewConfig,
+  EmbeddedConfig,
+  FlashConfig,
+  HLSConfig,
+  HtmlPackageConfig,
+  ImageWidgetConfig,
   IframeConfig,
+  LocalVideoConfig,
+  NotificationConfig,
   PDFConfig,
   PowerPointConfig,
+  ShellCommandConfig,
   SignageWidget,
+  SpacerConfig,
+  SubPlaylistConfig,
+  TextWidgetConfig,
   TickerConfig,
+  VideoInConfig,
+  VideoWidgetConfig,
+  WebpageConfig,
 } from "../../../types/widgets";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -174,6 +191,29 @@ export const WidgetInspector: React.FC<WidgetInspectorProps> = ({ widget }) => {
       )}
       {widget.type === "calendar" && (
         <CalendarFields config={widget.config as CalendarConfig} onChange={updateConfig} />
+      )}
+      {(
+        [
+          "text",
+          "notification",
+          "datasetTicker",
+          "datasetView",
+          "shellCommand",
+          "subPlaylist",
+          "spacer",
+          "videoIn",
+          "hls",
+          "htmlPackage",
+          "flash",
+          "localVideo",
+          "image",
+          "video",
+          "audio",
+          "webpage",
+          "embedded",
+        ] as readonly string[]
+      ).includes(widget.type) && (
+        <JsonConfigFields config={widget.config} onChange={updateConfig} />
       )}
     </div>
   );
@@ -511,6 +551,48 @@ const CalendarFields = ({ config, onChange }: { config: CalendarConfig; onChange
       <option value="month">Month</option><option value="week">Week</option><option value="day">Day</option>
     </select>
     <input type="number" className="w-full bg-background border border-border rounded px-2 py-1 text-xs" value={config.refreshInterval} onChange={(e) => onChange({ ...config, refreshInterval: Number(e.target.value) || 60 })} />
+  </div>
+);
+
+const JsonConfigFields = ({
+  config,
+  onChange,
+}: {
+  config:
+    | AudioWidgetConfig
+    | DatasetTickerConfig
+    | DatasetViewConfig
+    | EmbeddedConfig
+    | FlashConfig
+    | HLSConfig
+    | HtmlPackageConfig
+    | ImageWidgetConfig
+    | LocalVideoConfig
+    | NotificationConfig
+    | ShellCommandConfig
+    | SpacerConfig
+    | SubPlaylistConfig
+    | TextWidgetConfig
+    | VideoInConfig
+    | VideoWidgetConfig
+    | WebpageConfig;
+  onChange: (v: SignageWidget["config"]) => void;
+}) => (
+  <div className="space-y-2 rounded-lg border border-border p-3 bg-background-tertiary">
+    <p className="text-[10px] text-text-muted">
+      Configure this widget using JSON fields.
+    </p>
+    <textarea
+      className="w-full h-40 bg-background border border-border rounded px-2 py-1 text-xs font-mono"
+      value={JSON.stringify(config, null, 2)}
+      onChange={(e) => {
+        try {
+          onChange(JSON.parse(e.target.value) as SignageWidget["config"]);
+        } catch {
+          // Ignore while typing invalid JSON
+        }
+      }}
+    />
   </div>
 );
 

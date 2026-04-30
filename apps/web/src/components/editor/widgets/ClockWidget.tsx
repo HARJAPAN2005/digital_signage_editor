@@ -109,7 +109,19 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ config }) => {
       }}
     >
       {config.clockType === "analog" ? (
-        renderAnalog()
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-2 py-2">
+          <div className="flex-1 w-full min-h-0">{renderAnalog()}</div>
+          <span
+            style={{
+              color: config.color,
+              fontSize: Math.max(10, Math.floor(config.fontSize * 0.3)),
+              fontFamily: config.fontFamily,
+              lineHeight: 1.1,
+            }}
+          >
+            {config.timezone}
+          </span>
+        </div>
       ) : (
         <span
           ref={textRef}

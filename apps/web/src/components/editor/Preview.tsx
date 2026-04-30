@@ -45,14 +45,31 @@ import {
 import { useEngineStore } from "../../stores/engine-store";
 import { useSignageWidgetStore } from "../../stores/signage-widget-store";
 import type {
+  AudioWidgetConfig,
   CalendarConfig,
   ChartConfig,
   ClockConfig,
   CountdownConfig,
+  DatasetTickerConfig,
+  DatasetViewConfig,
+  EmbeddedConfig,
+  FlashConfig,
+  HLSConfig,
+  HtmlPackageConfig,
+  ImageWidgetConfig,
   IframeConfig,
+  LocalVideoConfig,
+  NotificationConfig,
   PDFConfig,
   PowerPointConfig,
+  ShellCommandConfig,
+  SpacerConfig,
+  SubPlaylistConfig,
+  TextWidgetConfig,
   TickerConfig,
+  VideoInConfig,
+  VideoWidgetConfig,
+  WebpageConfig,
 } from "../../types/widgets";
 import {
   type HandlePosition,
@@ -1392,9 +1409,7 @@ export const Preview: React.FC = () => {
         ) {
           ctx.fillStyle = hasVideoContent
             ? "#000000"
-            : isDark
-              ? "#0f0f11"
-              : "#ffffff";
+            : "#000000";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           shouldClearCanvas = false;
         }
@@ -1586,7 +1601,7 @@ export const Preview: React.FC = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const emptyBg = isDark ? "#0f0f11" : "#ffffff";
+      const emptyBg = "#000000";
       const emptyText = isDark ? "#52525b" : "#a1a1aa";
       const textPrimary = isDark ? "#ffffff" : "#18181b";
       const textSecondary = isDark ? "#a1a1aa" : "#71717a";
@@ -1606,9 +1621,7 @@ export const Preview: React.FC = () => {
       );
 
       ctx.fillStyle = hasVideoContent
-        ? isDark
-          ? "#18181b"
-          : "#f4f4f5"
+        ? "#000000"
         : emptyBg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -4840,6 +4853,63 @@ export const Preview: React.FC = () => {
 
   const renderWidgetContent = useCallback(
     (widget: (typeof activeWidgets)[number], widgetTime: number) => {
+      if (widget.type === "image") {
+        const config = widget.config as ImageWidgetConfig;
+        if (!config.imageUrl) {
+          return <div className="w-full h-full flex items-center justify-center text-xs text-white/70">Image URL not set</div>;
+        }
+        return (
+          <img
+            src={config.imageUrl}
+            alt="Widget image"
+            className="w-full h-full"
+            style={{ objectFit: config.objectFit }}
+          />
+        );
+      }
+      if (widget.type === "video") {
+        const config = widget.config as VideoWidgetConfig;
+        const videoUrl = config.videoUrl;
+        if (!videoUrl) {
+          return <div className="w-full h-full flex items-center justify-center text-xs text-white/70">Video URL not set</div>;
+        }
+        return (
+          <video
+            src={videoUrl}
+            className="w-full h-full object-cover"
+            autoPlay={config.autoplay}
+            muted={config.muted}
+            loop={config.loop}
+            controls={false}
+          />
+        );
+      }
+      if (widget.type === "localVideo") {
+        const config = widget.config as LocalVideoConfig;
+        const videoUrl = config.videoUrl;
+        if (!videoUrl) {
+          return <div className="w-full h-full flex items-center justify-center text-xs text-white/70">Video URL not set</div>;
+        }
+        return (
+          <video
+            src={videoUrl}
+            className="w-full h-full object-cover"
+            autoPlay
+            muted={config.muted}
+            loop={config.loop}
+            controls={false}
+          />
+        );
+      }
+      if (widget.type === "audio") {
+        const config = widget.config as AudioWidgetConfig;
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-white px-3">
+            <div className="text-sm font-semibold">{config.title || "Audio"}</div>
+            <audio src={config.audioUrl} autoPlay loop controls className="w-full max-w-[320px]" />
+          </div>
+        );
+      }
       if (widget.type === "clock") {
         return <ClockWidget config={widget.config as ClockConfig} />;
       }
@@ -4855,6 +4925,42 @@ export const Preview: React.FC = () => {
       if (widget.type === "iframe") {
         return <IframeWidget config={widget.config as IframeConfig} />;
       }
+      if (widget.type === "webpage") {
+        const config = widget.config as WebpageConfig;
+        return (
+          <IframeWidget
+            config={{
+              src: config.url,
+              title: config.title,
+              allowFullscreen: true,
+              renderMode: "auto",
+              snapshotRefreshInterval: 30,
+              sandbox: "allow-scripts allow-same-origin",
+              borderRadius: 8,
+              zoom: 1,
+              transparentBackground: false,
+            }}
+          />
+        );
+      }
+      if (widget.type === "embedded") {
+        const config = widget.config as EmbeddedConfig;
+        return (
+          <IframeWidget
+            config={{
+              src: config.embedUrl,
+              title: config.title,
+              allowFullscreen: true,
+              renderMode: "auto",
+              snapshotRefreshInterval: 30,
+              sandbox: "allow-scripts allow-same-origin",
+              borderRadius: 8,
+              zoom: 1,
+              transparentBackground: false,
+            }}
+          />
+        );
+      }
       if (widget.type === "powerpoint") {
         return (
           <PowerPointWidget
@@ -4866,6 +4972,157 @@ export const Preview: React.FC = () => {
       if (widget.type === "chart") {
         return <ChartWidget config={widget.config as ChartConfig} />;
       }
+      if (widget.type === "text") {
+        const config = widget.config as TextWidgetConfig;
+        return (
+          <div
+            className="w-full h-full flex items-center px-4"
+            style={{
+              justifyContent:
+                config.textAlign === "left"
+                  ? "flex-start"
+                  : config.textAlign === "right"
+                    ? "flex-end"
+                    : "center",
+              color: config.color,
+              backgroundColor: config.backgroundColor,
+              fontSize: config.fontSize,
+              fontFamily: config.fontFamily,
+            }}
+          >
+            {config.text}
+          </div>
+        );
+      }
+      if (widget.type === "notification") {
+        const config = widget.config as NotificationConfig;
+        return (
+          <div className="w-full h-full p-3">
+            <div
+              className="h-full w-full rounded-md border border-white/20 p-3"
+              style={{ backgroundColor: config.backgroundColor, color: config.textColor }}
+            >
+              <div className="text-sm font-semibold">{config.title}</div>
+              <div className="text-xs mt-1">{config.message}</div>
+            </div>
+          </div>
+        );
+      }
+      if (widget.type === "datasetTicker") {
+        const config = widget.config as DatasetTickerConfig;
+        return (
+          <TickerWidget
+            config={{
+              text: config.entries.join("   •   "),
+              speed: config.speed,
+              backgroundColor: config.backgroundColor,
+              textColor: config.textColor,
+              fontSize: 22,
+              position: "bottom",
+              fontFamily: "Inter",
+            }}
+          />
+        );
+      }
+      if (widget.type === "datasetView") {
+        const config = widget.config as DatasetViewConfig;
+        return (
+          <div className="w-full h-full overflow-auto p-2 bg-black/30 text-white text-xs">
+            <div className="font-semibold mb-2">{config.title}</div>
+            <table className="w-full border-collapse">
+              <thead style={{ backgroundColor: config.headerBackground }}>
+                <tr>
+                  {config.columns.map((column) => (
+                    <th key={column} className="text-left px-2 py-1 border border-white/20">
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {config.rows.map((row, i) => (
+                  <tr key={`row-${i}`}>
+                    {row.map((cell, idx) => (
+                      <td key={`cell-${i}-${idx}`} className="px-2 py-1 border border-white/10">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      if (widget.type === "shellCommand") {
+        const config = widget.config as ShellCommandConfig;
+        return (
+          <div className="w-full h-full bg-black text-green-400 font-mono text-xs p-2 overflow-auto">
+            <div>$ {config.command}</div>
+            <pre className="whitespace-pre-wrap mt-1">{config.output}</pre>
+          </div>
+        );
+      }
+      if (widget.type === "subPlaylist") {
+        const config = widget.config as SubPlaylistConfig;
+        const index = Math.floor(widgetTime / Math.max(1, config.secondsPerItem)) % Math.max(1, config.items.length);
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center text-white gap-2 p-3">
+            <div className="text-xs uppercase tracking-wider text-white/70">Sub-Playlist</div>
+            <div className="text-base font-semibold">{config.items[index] || "No items configured"}</div>
+          </div>
+        );
+      }
+      if (widget.type === "spacer") {
+        const config = widget.config as SpacerConfig;
+        return <div className="w-full h-full" style={{ backgroundColor: config.backgroundColor }} />;
+      }
+      if (widget.type === "videoIn") {
+        const config = widget.config as VideoInConfig;
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white gap-2">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-red-400">Live Input</div>
+            <div className="text-sm font-semibold">{config.sourceName}</div>
+            <div className="text-xs text-white/70">{config.status}</div>
+          </div>
+        );
+      }
+      if (widget.type === "hls") {
+        const config = widget.config as HLSConfig;
+        if (!config.streamUrl) {
+          return <div className="w-full h-full flex items-center justify-center text-xs text-white/70">HLS stream URL not set</div>;
+        }
+        return (
+          <video
+            src={config.streamUrl}
+            autoPlay={config.autoplay}
+            muted={config.muted}
+            controls={false}
+            className="w-full h-full object-cover"
+          />
+        );
+      }
+      if (widget.type === "htmlPackage") {
+        const config = widget.config as HtmlPackageConfig;
+        return (
+          <iframe
+            title="HTML package"
+            srcDoc={config.html}
+            className="w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        );
+      }
+      if (widget.type === "flash") {
+        const config = widget.config as FlashConfig;
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black text-white px-3 text-center">
+            <div className="text-sm font-semibold">Flash Widget</div>
+            <div className="text-xs text-yellow-300">{config.fallbackText}</div>
+            {config.sourceUrl && <div className="text-[10px] text-white/60 truncate w-full">{config.sourceUrl}</div>}
+          </div>
+        );
+      }
       return <CalendarWidget config={widget.config as CalendarConfig} />;
     },
     [],
@@ -4875,7 +5132,7 @@ export const Preview: React.FC = () => {
     <div
       ref={containerRef}
       data-tour="preview"
-      className="flex-1 bg-background flex flex-col relative group overflow-hidden"
+      className="flex-1 min-h-0 bg-background flex flex-col relative group overflow-hidden"
     >
       {/* Crop Mode View - Full Screen Overlay */}
       {shouldShowCropMode && (
@@ -4894,8 +5151,8 @@ export const Preview: React.FC = () => {
 
       {/* Video Area */}
       <div
-        className={`flex-1 relative flex items-center justify-center bg-background-secondary/30 transition-all duration-300 ${
-          isMaximized || isFullscreen ? "p-0" : "p-4"
+        className={`flex-1 min-h-0 relative flex items-center justify-center bg-background-secondary/30 transition-all duration-300 ${
+          isMaximized || isFullscreen ? "p-0" : "p-2"
         } ${zoomLevel > 1 ? "overflow-auto" : ""}`}
         onMouseMove={interactionMode !== "none" ? handleMouseMove : undefined}
         onMouseUp={handleMouseUp}
@@ -4915,9 +5172,11 @@ export const Preview: React.FC = () => {
                   maxWidth: "none",
                 }
               : {
-                  height: `${450 * zoomLevel}px`,
-                  width: `calc(${450 * zoomLevel}px * ${settings.width} / ${settings.height})`,
-                  maxWidth: `${800 * zoomLevel}px`,
+                  width: "100%",
+                  height: "auto",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  aspectRatio: `${settings.width} / ${settings.height}`,
                 }
           }
         >
@@ -5423,7 +5682,7 @@ export const Preview: React.FC = () => {
 
       {/* Player Controls with integrated Scrub Bar */}
       <div
-        className={`border-t border-border transition-all duration-300 ${
+        className={`shrink-0 border-t border-border transition-all duration-300 ${
           isMaximized || isFullscreen
             ? "absolute bottom-0 left-0 right-0 z-50 bg-background-secondary backdrop-blur-sm"
             : "z-20 bg-background-secondary"

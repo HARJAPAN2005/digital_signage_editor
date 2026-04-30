@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 
 import { Toolbar } from "./Toolbar";
-import { SignageToolbar } from "./SignageToolbar";
 import { AssetsPanel } from "./AssetsPanel";
 import { Preview } from "./Preview";
 import { InspectorPanel } from "./InspectorPanel";
@@ -303,7 +302,6 @@ export const EditorInterface: React.FC = () => {
     <div className="w-full h-full bg-background flex flex-col overflow-hidden font-sans select-none relative z-20 text-xs text-text-secondary">
       {/* Main App Toolbar */}
       <Toolbar />
-      <SignageToolbar />
 
       {/* Workspace Area */}
       <div className="flex-1 flex overflow-hidden">
