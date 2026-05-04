@@ -14,6 +14,7 @@ import {
   isShareExpired,
   type ShareInfo,
 } from "../services/share-service";
+import { AgeruWordmark } from "../components/AgeruWordmark";
 
 interface SharePageProps {
   shareId: string;
@@ -198,7 +199,7 @@ export const SharePage: React.FC<SharePageProps> = ({ shareId }) => {
           <p className="text-xs text-text-muted">
             Made with{" "}
             <a href="#/editor" className="text-primary hover:underline">
-              Video Editor
+              <AgeruWordmark className="text-inherit font-semibold" />
             </a>
           </p>
         </div>

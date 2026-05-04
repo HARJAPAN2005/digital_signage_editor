@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 
+import { useRouter } from "../../hooks/use-router";
 import { Toolbar } from "./Toolbar";
 import { AssetsPanel } from "./AssetsPanel";
 import { Preview } from "./Preview";
@@ -10,6 +11,7 @@ import { AudioMixer } from "../audio-mixer";
 import { KeyboardShortcutsOverlay } from "./KeyboardShortcutsOverlay";
 import { PanelErrorBoundary } from "../ErrorBoundary";
 import { SpotlightTour, MoGraphTour } from "./tour";
+import { SettingsDialog } from "./settings/SettingsDialog";
 import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
 import { useEngineStore } from "../../stores/engine-store";
@@ -166,12 +168,17 @@ export const EditorInterface: React.FC = () => {
     useKeyboardShortcuts();
   useAutoSave();
 
+  const { params } = useRouter();
+  const isPreview = params.preview === "1";
+  const layoutName = params.signageLayoutName ?? "Layout Preview";
+
   const {
     keyframeEditorOpen,
     setKeyframeEditorOpen,
     getSelectedClipIds,
     panels,
     setPanelVisible,
+    setPanelHeight,
   } = useUIStore();
   const { project, updateClipKeyframes } = useProjectStore();
   const tracks = project.timeline.tracks;
@@ -249,7 +256,8 @@ export const EditorInterface: React.FC = () => {
     []
   );
 
-  const [timelineHeight, setTimelineHeight] = useState(320);
+  const timelineVisible = panels.timeline?.visible ?? true;
+  const timelineHeight = panels.timeline?.height ?? 320;
   const isDraggingRef = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -265,7 +273,10 @@ export const EditorInterface: React.FC = () => {
 
       const newHeight = window.innerHeight - e.clientY;
       const maxHeight = window.innerHeight * 0.6;
-      setTimelineHeight(Math.max(200, Math.min(newHeight, maxHeight)));
+      setPanelHeight(
+        "timeline",
+        Math.max(200, Math.min(newHeight, maxHeight)),
+      );
     };
 
     const handleMouseUp = () => {
@@ -281,7 +292,7 @@ export const EditorInterface: React.FC = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, []);
+  }, [setPanelHeight]);
 
   if (initializing || !initialized) {
     return (
@@ -300,22 +311,44 @@ export const EditorInterface: React.FC = () => {
 
   return (
     <div className="w-full h-full bg-background flex flex-col overflow-hidden font-sans select-none relative z-20 text-xs text-text-secondary">
-      {/* Main App Toolbar */}
-      <Toolbar />
+      {/* Preview mode banner — replaces toolbar for read-only previews */}
+      {isPreview ? (
+        <div className="h-10 shrink-0 flex items-center justify-between px-4 bg-zinc-900 border-b border-zinc-700 z-30">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              PREVIEW
+            </span>
+            <span className="text-xs text-zinc-300 truncate max-w-[260px]">{layoutName}</span>
+          </div>
+          <button
+            onClick={() => window.close()}
+            className="text-zinc-400 hover:text-white text-xs px-3 py-1 rounded hover:bg-zinc-700 transition-colors"
+          >
+            Close preview
+          </button>
+        </div>
+      ) : (
+        /* Main App Toolbar */
+        <Toolbar />
+      )}
 
-      {/* Workspace Area */}
-      <div className="flex-1 flex overflow-hidden">
-        <PanelErrorBoundary name="Assets Panel">
-          <AssetsPanel />
-        </PanelErrorBoundary>
+      {/* Workspace Area — preview flex-1 grows when side panels are hidden */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {(panels.mediaLibrary?.visible ?? true) ? (
+          <PanelErrorBoundary name="Assets Panel">
+            <AssetsPanel />
+          </PanelErrorBoundary>
+        ) : null}
 
         <PanelErrorBoundary name="Preview">
           <Preview />
         </PanelErrorBoundary>
 
-        <PanelErrorBoundary name="Inspector">
-          <InspectorPanel />
-        </PanelErrorBoundary>
+        {(panels.inspector?.visible ?? true) ? (
+          <PanelErrorBoundary name="Inspector">
+            <InspectorPanel />
+          </PanelErrorBoundary>
+        ) : null}
 
         {keyframeEditorOpen && (
           <PanelErrorBoundary name="Keyframe Editor">
@@ -334,13 +367,14 @@ export const EditorInterface: React.FC = () => {
         )}
       </div>
 
-      {/* Resizable Handle */}
-      <div
-        className="h-1 bg-border hover:bg-primary/50 cursor-row-resize transition-colors z-10 relative group"
-        onMouseDown={handleMouseDown}
-      >
-        <div className="absolute inset-x-0 -top-1 -bottom-1 bg-transparent" />
-      </div>
+      {timelineVisible ? (
+        <div
+          className="h-1 bg-border hover:bg-primary/50 cursor-row-resize transition-colors z-10 relative group shrink-0"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute inset-x-0 -top-1 -bottom-1 bg-transparent" />
+        </div>
+      ) : null}
 
       {/* Audio Mixer (when open) */}
       {panels.audioMixer?.visible && (
@@ -352,15 +386,16 @@ export const EditorInterface: React.FC = () => {
         </PanelErrorBoundary>
       )}
 
-      {/* BOTTOM PANEL: Timeline */}
-      <div
-        style={{ height: timelineHeight }}
-        className="shrink-0 flex flex-col"
-      >
-        <PanelErrorBoundary name="Timeline">
-          <Timeline />
-        </PanelErrorBoundary>
-      </div>
+      {timelineVisible ? (
+        <div
+          style={{ height: timelineHeight }}
+          className="shrink-0 flex flex-col min-h-0"
+        >
+          <PanelErrorBoundary name="Timeline">
+            <Timeline />
+          </PanelErrorBoundary>
+        </div>
+      ) : null}
 
       <KeyboardShortcutsOverlay
         isOpen={showShortcutsOverlay}
@@ -369,6 +404,8 @@ export const EditorInterface: React.FC = () => {
 
       <SpotlightTour />
       <MoGraphTour />
+
+      <SettingsDialog />
     </div>
   );
 };

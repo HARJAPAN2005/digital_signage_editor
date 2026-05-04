@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useEffect, useCallback, useRef, lazy, Suspense, useState } from "react";
 import { ToastContainer } from "./components/Toast";
 import { ScriptViewDialog } from "./components/editor/ScriptViewDialog";
 import { SearchModal } from "./components/editor/SearchModal";
@@ -11,8 +11,10 @@ import { useProjectStore } from "./stores/project-store";
 import { useRouter } from "./hooks/use-router";
 import { useProjectRecovery } from "./hooks/useProjectRecovery";
 import { useKieAIPoller } from "./hooks/useKieAIPoller";
-import { SOCIAL_MEDIA_PRESETS, type SocialMediaCategory } from "@openreel/core";
+import { SOCIAL_MEDIA_PRESETS, type SocialMediaCategory, type Project } from "@openreel/core";
 import { TooltipProvider } from "@openreel/ui";
+import { setSignageAuth, getSignageLayout, isSignageLayoutsConnected } from "./services/signage-layouts-api";
+import { useSignageMediaStore } from "./stores/signage-media-store";
 
 const EditorInterface = lazy(() =>
   import("./components/editor/EditorInterface").then((m) => ({
@@ -39,12 +41,114 @@ function App() {
   const { activeModal, closeModal, skipWelcomeScreen } = useUIStore();
   const { openModal: openSearchModal } = useUIStore();
   const createNewProject = useProjectStore((state) => state.createNewProject);
+  const loadProject = useProjectStore((state) => state.loadProject);
   const { showDialog, availableSaves, recover, dismiss, clearAll } = useProjectRecovery();
 
   const { route, params, navigate, parsedDimensions, fps } = useRouter();
   const hasHandledInitialRoute = useRef(false);
+  const signageLayoutLoadedRef = useRef(false);
+
+  // Track whether we are still fetching the signage layout before showing the editor.
+  const [signageLoading, setSignageLoading] = useState(false);
+  const [signageLoadError, setSignageLoadError] = useState<string | null>(null);
 
   useKieAIPoller();
+
+  // ---------------------------------------------------------------------------
+  // Signal opener that the editor is ready to receive SIGNAGE_INIT.
+  // The dashboard retries SIGNAGE_INIT until it sees OPENREEL_EDITOR_READY back.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (window.opener) {
+      try {
+        window.opener.postMessage({ type: "OPENREEL_EDITOR_READY" }, "*");
+      } catch { /* cross-origin opener blocked */ }
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Cross-origin auth bridge: listen for SIGNAGE_INIT from the digital-signage
+  // host page and write token/apiUrl into localStorage so the layout APIs work.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const data = event.data as Record<string, unknown> | null;
+      if (!data || data.type !== "SIGNAGE_INIT") return;
+      const { token, apiUrl } = data as { token?: string; apiUrl?: string };
+      if (token && apiUrl) {
+        setSignageAuth(token, apiUrl);
+        // ACK so the parent stops retrying
+        try {
+          if (window.opener) window.opener.postMessage({ type: "SIGNAGE_INIT_ACK" }, "*");
+        } catch { /* blocked */ }
+        // Re-check the media store connection so the Library tab activates.
+        const mediaStore = useSignageMediaStore.getState();
+        mediaStore.checkConnection();
+        if (useSignageMediaStore.getState().connected) {
+          void mediaStore.fetchItems();
+          void mediaStore.fetchQuota();
+        }
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Signage layout loader: when the editor opens in digital-signage integration
+  // mode, fetch the layout from the API and seed the project store with it.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (signageLayoutLoadedRef.current) return;
+    if (params.integration !== "digital-signage") return;
+    if (!params.signageLayoutId) return;
+    if (route !== "editor") return;
+
+    signageLayoutLoadedRef.current = true;
+
+    const load = async () => {
+      setSignageLoading(true);
+      setSignageLoadError(null);
+      try {
+        // Auth may not be in localStorage yet (cross-origin iframe case).
+        // Wait briefly for the SIGNAGE_INIT postMessage to arrive and set it.
+        if (!isSignageLayoutsConnected()) {
+          await new Promise<void>((resolve) => {
+            const timeout = setTimeout(resolve, 2000);
+            const onMsg = (ev: MessageEvent) => {
+              const d = ev.data as Record<string, unknown> | null;
+              if (d?.type === "SIGNAGE_INIT") {
+                clearTimeout(timeout);
+                window.removeEventListener("message", onMsg);
+                resolve();
+              }
+            };
+            window.addEventListener("message", onMsg);
+          });
+        }
+
+        const layout = await getSignageLayout(params.signageLayoutId!);
+        if (layout.layoutJson && typeof layout.layoutJson === "object") {
+          loadProject(layout.layoutJson as unknown as Project);
+        }
+        // In preview mode: hide all editing panels so only the canvas is visible.
+        if (params.preview === "1") {
+          const { setPanelVisible } = useUIStore.getState();
+          setPanelVisible("mediaLibrary", false);
+          setPanelVisible("inspector", false);
+          setPanelVisible("timeline", false);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to load layout.";
+        setSignageLoadError(msg);
+        console.error("[Signage] Failed to load layout:", err);
+      } finally {
+        setSignageLoading(false);
+      }
+    };
+
+    void load();
+  }, [params.integration, params.signageLayoutId, route, loadProject]);
 
   useEffect(() => {
     if (hasHandledInitialRoute.current) return;
@@ -131,6 +235,8 @@ function App() {
         ? "recent"
         : undefined;
   const isSharePage = route === "share" && params.shareId;
+  const isSignageSession =
+    params.integration === "digital-signage" && Boolean(params.signageLayoutId);
 
   return (
     <TooltipProvider>
@@ -140,6 +246,18 @@ function App() {
           <SharePage shareId={params.shareId!} />
         ) : showWelcome ? (
           <WelcomeScreen initialTab={initialTab} />
+        ) : signageLoading ? (
+          <LoadingSpinner message="Loading layout from digital signage…" />
+        ) : signageLoadError && isSignageSession ? (
+          <div className="h-screen w-screen bg-background flex flex-col items-center justify-center gap-4 p-8 text-center">
+            <p className="text-sm text-red-400">Could not load layout: {signageLoadError}</p>
+            <button
+              className="text-sm text-text-secondary underline"
+              onClick={() => { setSignageLoadError(null); navigate("editor"); }}
+            >
+              Continue anyway
+            </button>
+          </div>
         ) : (
           <Suspense fallback={<LoadingSpinner message="Loading editor..." />}>
             <EditorInterface />

@@ -7,7 +7,8 @@ export type PanelId =
   | "effects"
   | "audioMixer"
   | "colorGrading"
-  | "subtitles";
+  | "subtitles"
+  | "timeline";
 
 export type SelectionType =
   | "clip"
@@ -105,6 +106,7 @@ export interface UIState {
   togglePanel: (panelId: PanelId) => void;
   setPanelVisible: (panelId: PanelId, visible: boolean) => void;
   setPanelWidth: (panelId: PanelId, width: number) => void;
+  setPanelHeight: (panelId: PanelId, height: number) => void;
   setPanelCollapsed: (panelId: PanelId, collapsed: boolean) => void;
   setShortcut: (action: keyof KeyboardShortcuts, shortcut: string) => void;
   resetShortcuts: () => void;
@@ -128,16 +130,6 @@ export interface UIState {
   setMotionPathMode: (enabled: boolean, clipId?: string) => void;
   setKeyframeEditorOpen: (open: boolean) => void;
   toggleKeyframeEditor: () => void;
-  exportState: {
-    isExporting: boolean;
-    progress: number;
-    phase: string;
-  };
-  setExportState: (state: {
-    isExporting: boolean;
-    progress: number;
-    phase: string;
-  }) => void;
 }
 
 export interface ContextMenuItem {
@@ -177,12 +169,13 @@ const DEFAULT_SNAP_SETTINGS: SnapSettings = {
 };
 
 const DEFAULT_PANELS: Record<PanelId, PanelState> = {
-  mediaLibrary: { visible: true, width: 300 },
-  inspector: { visible: true, width: 300 },
+  mediaLibrary: { visible: true, width: 260 },
+  inspector: { visible: true, width: 320 },
   effects: { visible: false, width: 300 },
   audioMixer: { visible: false, width: 300 },
   colorGrading: { visible: false, width: 400 },
   subtitles: { visible: false, width: 300 },
+  timeline: { visible: true, height: 320 },
 };
 
 export const useUIStore = create<UIState>()(
@@ -223,14 +216,6 @@ export const useUIStore = create<UIState>()(
 
         showWelcomeScreen: true,
         skipWelcomeScreen: false,
-
-        exportState: {
-          isExporting: false,
-          progress: 0,
-          phase: "",
-        },
-
-        setExportState: (state) => set({ exportState: state }),
 
         select: (item: SelectionItem, addToSelection = false) => {
           const { selectedItems } = get();
@@ -369,54 +354,78 @@ export const useUIStore = create<UIState>()(
         },
 
         togglePanel: (panelId: PanelId) => {
-          set((state) => ({
-            // Use spread operator to create new panels object (immutability for Zustand reactivity)
-            panels: {
-              ...state.panels,
-              [panelId]: {
-                ...state.panels[panelId], // Shallow copy existing panel state
-                visible: !state.panels[panelId].visible, // Toggle visibility
+          set((state) => {
+            const prev = state.panels[panelId] ?? DEFAULT_PANELS[panelId];
+            return {
+              panels: {
+                ...state.panels,
+                [panelId]: {
+                  ...prev,
+                  visible: !prev.visible,
+                },
               },
-            },
-          }));
+            };
+          });
         },
 
         setPanelVisible: (panelId: PanelId, visible: boolean) => {
-          set((state) => ({
-            // Create new panels object to trigger subscribers
-            panels: {
-              ...state.panels,
-              [panelId]: {
-                ...state.panels[panelId],
-                visible,
+          set((state) => {
+            const prev = state.panels[panelId] ?? DEFAULT_PANELS[panelId];
+            return {
+              panels: {
+                ...state.panels,
+                [panelId]: {
+                  ...prev,
+                  visible,
+                },
               },
-            },
-          }));
+            };
+          });
         },
 
         setPanelWidth: (panelId: PanelId, width: number) => {
-          set((state) => ({
-            panels: {
-              ...state.panels,
-              [panelId]: {
-                ...state.panels[panelId],
-                // Clamp width between min (200px) and max (800px) for usability
-                width: Math.max(200, Math.min(800, width)),
+          set((state) => {
+            const prev = state.panels[panelId] ?? DEFAULT_PANELS[panelId];
+            return {
+              panels: {
+                ...state.panels,
+                [panelId]: {
+                  ...prev,
+                  width: Math.max(200, Math.min(800, width)),
+                },
               },
-            },
-          }));
+            };
+          });
+        },
+
+        setPanelHeight: (panelId: PanelId, height: number) => {
+          set((state) => {
+            const prev = state.panels[panelId] ?? DEFAULT_PANELS[panelId];
+            return {
+              panels: {
+                ...state.panels,
+                [panelId]: {
+                  ...prev,
+                  height: Math.max(200, Math.min(900, height)),
+                },
+              },
+            };
+          });
         },
 
         setPanelCollapsed: (panelId: PanelId, collapsed: boolean) => {
-          set((state) => ({
-            panels: {
-              ...state.panels,
-              [panelId]: {
-                ...state.panels[panelId],
-                collapsed,
+          set((state) => {
+            const prev = state.panels[panelId] ?? DEFAULT_PANELS[panelId];
+            return {
+              panels: {
+                ...state.panels,
+                [panelId]: {
+                  ...prev,
+                  collapsed,
+                },
               },
-            },
-          }));
+            };
+          });
         },
 
         setShortcut: (action: keyof KeyboardShortcuts, shortcut: string) => {
@@ -533,11 +542,19 @@ export const useUIStore = create<UIState>()(
       }),
       {
         name: "openreel-ui-preferences",
-        version: 1,
+        version: 2,
         migrate: (persisted: unknown, version: number) => {
           const state = persisted as Record<string, unknown>;
           if (version === 0) {
             state.snapSettings = DEFAULT_SNAP_SETTINGS;
+          }
+          if (version < 2) {
+            const panels = state.panels as
+              | Record<string, PanelState>
+              | undefined;
+            if (panels && typeof panels === "object" && !panels.timeline) {
+              panels.timeline = { visible: true, height: 320 };
+            }
           }
           return state;
         },

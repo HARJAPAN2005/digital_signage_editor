@@ -24,6 +24,7 @@ import {
   Magnet,
   Rows3,
   Rows2,
+  EyeOff,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useProjectStore } from "../../stores/project-store";
@@ -106,8 +107,15 @@ export const Timeline: React.FC = () => {
 
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
-  const { select, selectMultiple, clearSelection, getSelectedClipIds, snapSettings, toggleSnap } =
-    useUIStore();
+  const {
+    select,
+    selectMultiple,
+    clearSelection,
+    getSelectedClipIds,
+    snapSettings,
+    toggleSnap,
+    setPanelVisible,
+  } = useUIStore();
   const selectedItems = useUIStore((state) => state.selectedItems);
   const widgets = useSignageWidgetStore((state) => state.widgets);
   const addWidget = useSignageWidgetStore((state) => state.addWidget);
@@ -1072,6 +1080,11 @@ export const Timeline: React.FC = () => {
               <span className="text-base font-medium">+</span>
             </button>
           </div>
+          <IconButton
+            icon={EyeOff}
+            onClick={() => setPanelVisible("timeline", false)}
+            title="Hide timeline"
+          />
           <IconButton icon={Maximize2} title="Maximize timeline" />
         </div>
       </div>

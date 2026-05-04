@@ -22,6 +22,7 @@ import {
   Grid2x2,
   List,
   Sparkles,
+  Cloud,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -36,6 +37,7 @@ import type { SignageWidgetType } from "../../types/widgets";
 import type { MediaItem } from "@openreel/core";
 import { AspectRatioMatchDialog } from "./dialogs/AspectRatioMatchDialog";
 import { AIGenTab } from "./AIGenTab";
+import { SignageMediaLibraryTab } from "./SignageMediaLibraryTab";
 import { useTtsAudioStore } from "../../stores/tts-store";
 import { toast } from "../../stores/notification-store";
 import { saveFileHandle, saveDirectoryHandle } from "../../services/media-storage";
@@ -54,6 +56,8 @@ import {
   cloneDefaultWidgetConfig,
   useSignageWidgetStore,
 } from "../../stores/signage-widget-store";
+import { useSignageMediaStore } from "../../stores/signage-media-store";
+import { isSignageConnected } from "../../services/signage-media-api";
 
 const SIGNAGE_WIDGETS: {
   type: SignageWidgetType;
@@ -684,16 +688,35 @@ export const AssetsPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTabRaw] = useState<
-    "media" | "text" | "graphics" | "ai" | "widgets"
-  >("media");
+    "media" | "text" | "graphics" | "ai" | "widgets" | "library"
+  >(isSignageConnected() ? "library" : "media");
   const ttsHasUnsaved = useTtsAudioStore((s) => s.generatedAudio !== null && !s.isAudioSaved);
+  const signageConnected = useSignageMediaStore((s) => s.connected);
+  const signageUploadFile = useSignageMediaStore((s) => s.uploadFile);
 
-  const setActiveTab = useCallback((tab: "media" | "text" | "graphics" | "ai" | "widgets") => {
+  const setActiveTab = useCallback((tab: "media" | "text" | "graphics" | "ai" | "widgets" | "library") => {
     if (activeTab === "ai" && tab !== "ai" && ttsHasUnsaved) {
       toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
     }
     setActiveTabRaw(tab);
   }, [activeTab, ttsHasUnsaved]);
+
+  // Check signage connection on mount; re-check when SIGNAGE_INIT arrives.
+  React.useEffect(() => {
+    const store = useSignageMediaStore.getState();
+    store.checkConnection();
+
+    const onInit = (ev: MessageEvent) => {
+      const d = ev.data as Record<string, unknown> | null;
+      if (d?.type !== "SIGNAGE_INIT") return;
+      useSignageMediaStore.getState().checkConnection();
+      // Auto-switch to Library tab when backend connection activates
+      setActiveTab("library");
+    };
+    window.addEventListener("message", onInit);
+    return () => window.removeEventListener("message", onInit);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -733,6 +756,8 @@ export const AssetsPanel: React.FC = () => {
 
   // UI store
   const { select, isSelected, startDrag } = useUIStore();
+  const setPanelVisible = useUIStore((s) => s.setPanelVisible);
+  const mediaPanelWidth = useUIStore((s) => s.panels.mediaLibrary.width ?? 260);
 
   // Count missing assets
   const missingAssetsCount = mediaItems.filter(
@@ -745,7 +770,7 @@ export const AssetsPanel: React.FC = () => {
     return matchesFilter;
   });
 
-  // Handle file import with loading state
+  // Handle file import with loading state + dual-write to signage backend
   const handleFileImport = useCallback(
     async (files: FileList | null) => {
       if (!files || files.length === 0) return;
@@ -762,6 +787,14 @@ export const AssetsPanel: React.FC = () => {
 
           const result = await importMedia(file);
 
+          // Dual-write: also upload to the signage backend when connected
+          if (result.success && isSignageConnected()) {
+            setImportProgress(`Uploading ${file.name} to media library...`);
+            signageUploadFile(file, file.name).catch((err) => {
+              console.warn("[AssetsPanel] Backend upload failed (non-blocking):", err);
+            });
+          }
+
           // If it's a video with audio, extract audio to separate track
           if (result.success && file.type.startsWith("video/")) {
             setImportProgress(`Extracting audio from ${file.name}...`);
@@ -776,7 +809,7 @@ export const AssetsPanel: React.FC = () => {
         setImportProgress("");
       }
     },
-    [importMedia],
+    [importMedia, signageUploadFile],
   );
 
   // Handle drag and drop import — capture FileSystemFileHandle for each dropped file
@@ -1099,7 +1132,8 @@ export const AssetsPanel: React.FC = () => {
   return (
     <div
       data-tour="assets"
-      className="w-[260px] bg-background-secondary border-r border-border flex flex-col h-full relative"
+      className="bg-background-secondary border-r border-border flex flex-col h-full relative shrink-0"
+      style={{ width: mediaPanelWidth }}
     >
       {/* Loading overlay */}
       {isImporting && (
@@ -1117,7 +1151,11 @@ export const AssetsPanel: React.FC = () => {
             title="Import media"
           />
           <IconButton icon={Maximize2} title="Maximize panel" />
-          <IconButton icon={X} title="Close panel" />
+          <IconButton
+            icon={X}
+            title="Hide assets panel"
+            onClick={() => setPanelVisible("mediaLibrary", false)}
+          />
         </div>
       </div>
 
@@ -1186,6 +1224,23 @@ export const AssetsPanel: React.FC = () => {
           AI Gen
           {activeTab === "ai" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(34,197,94,0.5)]" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("library")}
+          className={`pb-3 transition-all relative flex items-center gap-1 ${
+            activeTab === "library"
+              ? "text-text-primary"
+              : "hover:text-text-secondary"
+          }`}
+        >
+          <Cloud size={11} />
+          Library
+          {activeTab === "library" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(34,197,94,0.5)]" />
+          )}
+          {signageConnected && (
+            <div className="w-1.5 h-1.5 bg-primary rounded-full" title="Connected to backend" />
           )}
         </button>
       </div>
@@ -1667,6 +1722,9 @@ export const AssetsPanel: React.FC = () => {
           </div>
         </ScrollArea>
       )}
+
+      {/* Library Tab Content */}
+      {activeTab === "library" && <SignageMediaLibraryTab />}
 
       {/* AI Tab Content */}
       {activeTab === "ai" && <AIGenTab />}

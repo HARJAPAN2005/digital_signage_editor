@@ -16,6 +16,12 @@ export interface RouteParams {
   fps?: string;
   tab?: string;
   shareId?: string;
+  returnUrl?: string;
+  integration?: string;
+  signageLayoutId?: string;
+  signageLayoutName?: string;
+  /** "1" = read-only preview mode, hides all editing UI */
+  preview?: string;
 }
 
 export interface RouterState {

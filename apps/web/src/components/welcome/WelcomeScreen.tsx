@@ -17,6 +17,7 @@ import { RecentProjects } from "./RecentProjects";
 import { useRouter } from "../../hooks/use-router";
 import { useEditorPreload } from "../../hooks/useEditorPreload";
 import { useAnalytics, AnalyticsEvents } from "../../hooks/useAnalytics";
+import { AgeruWordmark } from "../AgeruWordmark";
 
 interface FormatOption {
   id: string;
@@ -182,9 +183,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
         <div className="w-full max-w-3xl">
           <div className="flex flex-col items-center text-center mb-12">
             <div className="flex items-center gap-3 mb-6">
-              <span className="text-xl font-semibold text-text-primary tracking-tight">
-                Video Editor
-              </span>
+              <AgeruWordmark className="text-xl font-semibold text-text-primary tracking-tight" />
             </div>
 
             <h1 className="text-4xl sm:text-5xl font-bold text-text-primary tracking-tight mb-3">
