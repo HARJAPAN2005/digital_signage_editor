@@ -7,7 +7,9 @@
       "Bash(Select-Object Name, Mode)",
       "Bash(xargs ls -lh)",
       "Bash(npx tsc *)",
-      "Bash(pnpm build *)"
+      "Bash(pnpm build *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ASUS\\\\openreel-video\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)"
     ]
   }
 }
