@@ -10,7 +10,7 @@ import { useUIStore } from "./stores/ui-store";
 import { useProjectStore } from "./stores/project-store";
 import { useRouter } from "./hooks/use-router";
 import { useProjectRecovery } from "./hooks/useProjectRecovery";
-import { useKieAIPoller } from "./hooks/useKieAIPoller";
+
 import { SOCIAL_MEDIA_PRESETS, type SocialMediaCategory, type Project } from "@openreel/core";
 import { TooltipProvider } from "@openreel/ui";
 import { setSignageAuth, getSignageLayout, isSignageLayoutsConnected } from "./services/signage-layouts-api";
@@ -52,7 +52,6 @@ function App() {
   const [signageLoading, setSignageLoading] = useState(false);
   const [signageLoadError, setSignageLoadError] = useState<string | null>(null);
 
-  useKieAIPoller();
 
   // ---------------------------------------------------------------------------
   // Signal opener that the editor is ready to receive SIGNAGE_INIT.

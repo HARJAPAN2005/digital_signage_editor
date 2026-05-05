@@ -36,7 +36,6 @@ import { useUIStore } from "../../stores/ui-store";
 import type { SignageWidgetType } from "../../types/widgets";
 import type { MediaItem } from "@openreel/core";
 import { AspectRatioMatchDialog } from "./dialogs/AspectRatioMatchDialog";
-import { AIGenTab } from "./AIGenTab";
 import { SignageMediaLibraryTab } from "./SignageMediaLibraryTab";
 import { useTtsAudioStore } from "../../stores/tts-store";
 import { toast } from "../../stores/notification-store";
@@ -49,9 +48,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@openreel/ui";
-import { KieAIImageDialog } from "./kieai/KieAIImageDialog";
-import { loadMediaBlob } from "../../services/media-storage";
-import { useKieAIStore } from "../../stores/kieai-store";
+
 import {
   cloneDefaultWidgetConfig,
   useSignageWidgetStore,
@@ -240,8 +237,6 @@ const MediaThumbnail: React.FC<{
   onReplace: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onAddToTimeline: () => void;
-  onKieAI?: () => void;
-  onRetryKieAI?: () => void;
 }> = ({
   item,
   isSelected,
@@ -251,8 +246,6 @@ const MediaThumbnail: React.FC<{
   onReplace,
   onDragStart,
   onAddToTimeline,
-  onKieAI,
-  onRetryKieAI,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -291,31 +284,15 @@ const MediaThumbnail: React.FC<{
       ? "text-primary/50"
       : "text-status-info/50";
 
-  const borderClass = item.kieaiError
-    ? "border-red-500 ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-    : item.isPending
-    ? "border-purple-500 ring-1 ring-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]"
-    : item.isPlaceholder
-      ? "border-yellow-500 ring-1 ring-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]"
-      : isSelected
-        ? "border-primary ring-1 ring-primary/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]"
-        : "border-border hover:border-text-secondary";
+  const borderClass = item.isPlaceholder
+    ? "border-yellow-500 ring-1 ring-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]"
+    : isSelected
+      ? "border-primary ring-1 ring-primary/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]"
+      : "border-border hover:border-text-secondary";
 
   const hoverOverlay = (
     <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center gap-2 animate-in fade-in duration-200">
-      {item.kieaiError ? (
-        <button
-          onClick={(e) => { e.stopPropagation(); onRetryKieAI?.(); }}
-          title="Generation failed — click to retry"
-          className="p-2 bg-red-500/20 rounded-full hover:bg-red-500/40 backdrop-blur-sm transition-colors"
-        >
-          <RefreshCw size={14} className="text-red-400" />
-        </button>
-      ) : item.isPending ? (
-        <div title="KieAI generation in progress…" className="p-2">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
-        </div>
-      ) : item.isPlaceholder ? (
+      {item.isPlaceholder ? (
         <>
           <button
             onClick={(e) => { e.stopPropagation(); onReplace(); }}
@@ -334,15 +311,6 @@ const MediaThumbnail: React.FC<{
         </>
       ) : (
         <>
-          {item.type === "image" && onKieAI && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onKieAI(); }}
-              title="Create with KieAI"
-              className="p-2 bg-purple-500/20 rounded-full hover:bg-purple-500/40 backdrop-blur-sm transition-colors"
-            >
-              <Sparkles size={14} className="text-purple-300" />
-            </button>
-          )}
           <button
             onClick={(e) => { e.stopPropagation(); onAddToTimeline(); }}
             title="Add to timeline"
@@ -385,17 +353,7 @@ const MediaThumbnail: React.FC<{
               <Icon size={14} className={iconColor} />
             </div>
           )}
-          {item.kieaiError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-red-500/10">
-              <AlertTriangle size={12} className="text-red-400" />
-            </div>
-          )}
-          {!item.kieaiError && item.isPending && (
-            <div className="absolute inset-0 flex items-center justify-center bg-purple-500/10">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
-            </div>
-          )}
-          {!item.kieaiError && !item.isPending && item.isPlaceholder && (
+          {!item.isPlaceholder && (
             <div className="absolute inset-0 flex items-center justify-center bg-yellow-500/10">
               <AlertTriangle size={12} className="text-yellow-500/70" />
             </div>
@@ -422,19 +380,7 @@ const MediaThumbnail: React.FC<{
         {/* Hover actions */}
         {isHovered && (
           <div className="flex items-center gap-1 flex-shrink-0">
-            {item.kieaiError ? (
-              <button
-                onClick={(e) => { e.stopPropagation(); onRetryKieAI?.(); }}
-                title="Retry generation"
-                className="p-1 bg-red-500/20 rounded hover:bg-red-500/40 transition-colors"
-              >
-                <RefreshCw size={12} className="text-red-400" />
-              </button>
-            ) : item.isPending ? (
-              <div className="p-1" title="Generating…">
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
-              </div>
-            ) : item.isPlaceholder ? (
+            {item.isPlaceholder ? (
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); onReplace(); }}
@@ -453,15 +399,6 @@ const MediaThumbnail: React.FC<{
               </>
             ) : (
               <>
-                {item.type === "image" && onKieAI && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onKieAI(); }}
-                    title="Create with KieAI"
-                    className="p-1 bg-purple-500/20 rounded hover:bg-purple-500/40 transition-colors"
-                  >
-                    <Sparkles size={12} className="text-purple-300" />
-                  </button>
-                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onAddToTimeline(); }}
                   title="Add to timeline"
@@ -487,12 +424,7 @@ const MediaThumbnail: React.FC<{
       </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          {item.type === "image" && onKieAI && (
-            <ContextMenuItem onClick={onKieAI}>
-              <Sparkles size={13} className="mr-2 text-primary" />
-              Create with KieAI
-            </ContextMenuItem>
-          )}
+
           <ContextMenuItem onClick={(e) => { (e as React.MouseEvent).stopPropagation?.(); onAddToTimeline(); }}>
             <Plus size={13} className="mr-2" />
             Add to Timeline
@@ -552,24 +484,8 @@ const MediaThumbnail: React.FC<{
           </div>
         )}
 
-        {/* KieAI Error Badge */}
-        {item.kieaiError && (
-          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-red-500 rounded text-[8px] text-white font-bold flex items-center gap-1">
-            <AlertTriangle size={8} />
-            Failed
-          </div>
-        )}
-
-        {/* Pending KieAI Badge */}
-        {!item.kieaiError && item.isPending && (
-          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-purple-500 rounded text-[8px] text-white font-bold flex items-center gap-1">
-            <div className="h-2 w-2 animate-spin rounded-full border border-white border-t-transparent" />
-            AI
-          </div>
-        )}
-
         {/* Missing Asset Badge */}
-        {!item.kieaiError && !item.isPending && item.isPlaceholder && (
+        {item.isPlaceholder && (
           <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-yellow-500 rounded text-[8px] text-black font-bold flex items-center gap-1">
             <AlertTriangle size={10} />
             Missing
@@ -583,22 +499,8 @@ const MediaThumbnail: React.FC<{
           </div>
         )}
 
-        {/* Error overlay */}
-        {item.kieaiError && !isHovered && (
-          <div className="absolute inset-0 flex items-center justify-center bg-red-500/10">
-            <AlertTriangle size={viewMode === "small" ? 20 : 32} className="text-red-400/60" />
-          </div>
-        )}
-
-        {/* Pending overlay */}
-        {!item.kieaiError && item.isPending && !isHovered && (
-          <div className="absolute inset-0 flex items-center justify-center bg-purple-500/10">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-400 border-t-transparent" />
-          </div>
-        )}
-
         {/* Warning icon overlay for placeholders */}
-        {!item.kieaiError && !item.isPending && item.isPlaceholder && !isHovered && (
+        {item.isPlaceholder && !isHovered && (
           <div className="absolute inset-0 flex items-center justify-center bg-yellow-500/10">
             <AlertTriangle size={viewMode === "small" ? 20 : 32} className="text-yellow-500/50" />
           </div>
@@ -638,12 +540,7 @@ const MediaThumbnail: React.FC<{
     </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        {item.type === "image" && onKieAI && (
-          <ContextMenuItem onClick={onKieAI}>
-            <Sparkles size={13} className="mr-2 text-primary" />
-            Create with KieAI
-          </ContextMenuItem>
-        )}
+
         <ContextMenuItem onClick={() => onAddToTimeline()}>
           <Plus size={13} className="mr-2" />
           Add to Timeline
@@ -688,18 +585,15 @@ export const AssetsPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTabRaw] = useState<
-    "media" | "text" | "graphics" | "ai" | "widgets" | "library"
+    "media" | "text" | "graphics" | "widgets" | "library"
   >(isSignageConnected() ? "library" : "media");
   const ttsHasUnsaved = useTtsAudioStore((s) => s.generatedAudio !== null && !s.isAudioSaved);
   const signageConnected = useSignageMediaStore((s) => s.connected);
   const signageUploadFile = useSignageMediaStore((s) => s.uploadFile);
 
-  const setActiveTab = useCallback((tab: "media" | "text" | "graphics" | "ai" | "widgets" | "library") => {
-    if (activeTab === "ai" && tab !== "ai" && ttsHasUnsaved) {
-      toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
-    }
+  const setActiveTab = useCallback((tab: "media" | "text" | "graphics" | "widgets" | "library") => {
     setActiveTabRaw(tab);
-  }, [activeTab, ttsHasUnsaved]);
+  }, []);
 
   // Check signage connection on mount; re-check when SIGNAGE_INIT arrives.
   React.useEffect(() => {
@@ -729,15 +623,11 @@ export const AssetsPanel: React.FC = () => {
     itemToAdd: MediaItem;
   } | null>(null);
   const [mediaViewMode, setMediaViewMode] = useState<MediaViewMode>("large");
-  const [generatingBackground, setGeneratingBackground] = useState<
-    string | null
-  >(null);
   const [backgroundCategory, setBackgroundCategory] = useState<
     "all" | "solid" | "gradient" | "pattern" | "mesh"
   >("all");
 
-  // KieAI image generation dialog
-  const [kieaiDialog, setKieaiDialog] = useState<{ file: File; previewUrl: string | null } | null>(null);
+
 
   // Project store
   const {
@@ -746,12 +636,10 @@ export const AssetsPanel: React.FC = () => {
     deleteMedia,
     replaceMediaAsset,
     updateSettings,
-    setKieAIItemState,
   } = useProjectStore();
   const mediaItems = project.mediaLibrary.items;
 
-  // KieAI store
-  const { retryTask } = useKieAIStore();
+
   const addWidget = useSignageWidgetStore((state) => state.addWidget);
 
   // UI store
@@ -1031,7 +919,6 @@ export const AssetsPanel: React.FC = () => {
 
   const handleImportBackground = useCallback(
     async (preset: BackgroundPreset) => {
-      setGeneratingBackground(preset.id);
       try {
         const { width, height } = project.settings;
         const blob = await generateBackgroundBlob(preset, width, height);
@@ -1045,8 +932,6 @@ export const AssetsPanel: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to generate background:", error);
-      } finally {
-        setGeneratingBackground(null);
       }
     },
     [importMedia, project.settings],
@@ -1083,30 +968,6 @@ export const AssetsPanel: React.FC = () => {
     },
     [importMedia],
   );
-
-  // Open KieAI dialog for an image asset
-  const handleOpenKieAI = useCallback(async (item: MediaItem) => {
-    try {
-      const blob = await loadMediaBlob(item.id);
-      if (!blob) {
-        toast.error("Asset not found", "Cannot load the image data for this asset.");
-        return;
-      }
-      const mimeType = blob.type || (item.name.match(/\.png$/i) ? "image/png" : "image/jpeg");
-      const file = new File([blob], item.name, { type: mimeType as string });
-      setKieaiDialog({ file, previewUrl: item.thumbnailUrl });
-    } catch (err) {
-      console.error("[KieAI] Failed to load media blob:", err);
-      toast.error("Failed to open KieAI", err instanceof Error ? err.message : "Unknown error");
-    }
-  }, []);
-
-  const handleRetryKieAI = useCallback((item: MediaItem) => {
-    if (!item.kieaiTaskId) return;
-    // Reset error state and re-activate polling
-    setKieAIItemState(item.id, true, false);
-    retryTask(item.kieaiTaskId);
-  }, [retryTask, setKieAIItemState]);
 
   const handleAddWidget = useCallback(
     (type: SignageWidgetType) => {
@@ -1213,19 +1074,7 @@ export const AssetsPanel: React.FC = () => {
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(34,197,94,0.5)]" />
           )}
         </button>
-        <button
-          onClick={() => setActiveTab("ai")}
-          className={`pb-3 transition-all relative ${
-            activeTab === "ai"
-              ? "text-primary"
-              : "text-primary/70 hover:text-primary"
-          }`}
-        >
-          AI Gen
-          {activeTab === "ai" && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(34,197,94,0.5)]" />
-          )}
-        </button>
+
         <button
           onClick={() => setActiveTab("library")}
           className={`pb-3 transition-all relative flex items-center gap-1 ${
@@ -1347,8 +1196,6 @@ export const AssetsPanel: React.FC = () => {
                     onReplace={() => handleReplaceAsset(item.id)}
                     onDragStart={(e) => handleItemDragStart(e, item)}
                     onAddToTimeline={() => handleAddToTimeline(item)}
-                    onKieAI={item.type === "image" && !item.isPending && !item.kieaiError ? () => handleOpenKieAI(item) : undefined}
-                    onRetryKieAI={item.kieaiError && item.kieaiTaskId ? () => handleRetryKieAI(item) : undefined}
                   />
                 ))}
                 {/* Add more media tile */}
@@ -1726,8 +1573,7 @@ export const AssetsPanel: React.FC = () => {
       {/* Library Tab Content */}
       {activeTab === "library" && <SignageMediaLibraryTab />}
 
-      {/* AI Tab Content */}
-      {activeTab === "ai" && <AIGenTab />}
+
 
       {/* Widgets Tab Content */}
       {activeTab === "widgets" && (
@@ -1775,14 +1621,7 @@ export const AssetsPanel: React.FC = () => {
         />
       )}
 
-      {kieaiDialog && (
-        <KieAIImageDialog
-          open={true}
-          onClose={() => setKieaiDialog(null)}
-          sourceFile={kieaiDialog.file}
-          previewUrl={kieaiDialog.previewUrl}
-        />
-      )}
+
     </div>
   );
 };
