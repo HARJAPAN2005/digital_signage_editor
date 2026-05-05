@@ -21,7 +21,6 @@ import {
   LayoutGrid,
   Grid2x2,
   List,
-  Sparkles,
   Cloud,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -37,7 +36,6 @@ import type { SignageWidgetType } from "../../types/widgets";
 import type { MediaItem } from "@openreel/core";
 import { AspectRatioMatchDialog } from "./dialogs/AspectRatioMatchDialog";
 import { SignageMediaLibraryTab } from "./SignageMediaLibraryTab";
-import { useTtsAudioStore } from "../../stores/tts-store";
 import { toast } from "../../stores/notification-store";
 import { saveFileHandle, saveDirectoryHandle } from "../../services/media-storage";
 import {
@@ -587,7 +585,7 @@ export const AssetsPanel: React.FC = () => {
   const [activeTab, setActiveTabRaw] = useState<
     "media" | "text" | "graphics" | "widgets" | "library"
   >(isSignageConnected() ? "library" : "media");
-  const ttsHasUnsaved = useTtsAudioStore((s) => s.generatedAudio !== null && !s.isAudioSaved);
+  const [generatingBackground, setGeneratingBackground] = useState<string | null>(null);
   const signageConnected = useSignageMediaStore((s) => s.connected);
   const signageUploadFile = useSignageMediaStore((s) => s.uploadFile);
 
@@ -919,6 +917,7 @@ export const AssetsPanel: React.FC = () => {
 
   const handleImportBackground = useCallback(
     async (preset: BackgroundPreset) => {
+      setGeneratingBackground(preset.id);
       try {
         const { width, height } = project.settings;
         const blob = await generateBackgroundBlob(preset, width, height);
@@ -932,6 +931,8 @@ export const AssetsPanel: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to generate background:", error);
+      } finally {
+        setGeneratingBackground(null);
       }
     },
     [importMedia, project.settings],

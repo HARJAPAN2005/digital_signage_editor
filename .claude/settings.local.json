@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npx vite *)",
-      "Bash(node --max-old-space-size=4096 node_modules/.bin/vite build)"
+      "Bash(node --max-old-space-size=4096 node_modules/.bin/vite build)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ASUS\\\\openreel-video\" -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(xargs ls -lh)",
+      "Bash(npx tsc *)",
+      "Bash(pnpm build *)"
     ]
   }
 }

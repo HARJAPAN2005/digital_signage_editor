@@ -2,32 +2,16 @@ import React from "react";
 import { useSignageWidgetStore } from "../../../stores/signage-widget-store";
 import * as pdfjs from "pdfjs-dist";
 import type {
-  AudioWidgetConfig,
   CalendarConfig,
   ChartConfig,
   ClockConfig,
   CountdownConfig,
-  DatasetTickerConfig,
-  DatasetViewConfig,
-  EmbeddedConfig,
-  FlashConfig,
-  HLSConfig,
-  HtmlPackageConfig,
-  ImageWidgetConfig,
   IframeConfig,
-  LocalVideoConfig,
-  NotificationConfig,
   PDFConfig,
   PowerPointConfig,
-  ShellCommandConfig,
   SignageWidget,
-  SpacerConfig,
-  SubPlaylistConfig,
-  TextWidgetConfig,
   TickerConfig,
-  VideoInConfig,
-  VideoWidgetConfig,
-  WebpageConfig,
+  WidgetConfig,
 } from "../../../types/widgets";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -558,24 +542,7 @@ const JsonConfigFields = ({
   config,
   onChange,
 }: {
-  config:
-    | AudioWidgetConfig
-    | DatasetTickerConfig
-    | DatasetViewConfig
-    | EmbeddedConfig
-    | FlashConfig
-    | HLSConfig
-    | HtmlPackageConfig
-    | ImageWidgetConfig
-    | LocalVideoConfig
-    | NotificationConfig
-    | ShellCommandConfig
-    | SpacerConfig
-    | SubPlaylistConfig
-    | TextWidgetConfig
-    | VideoInConfig
-    | VideoWidgetConfig
-    | WebpageConfig;
+  config: WidgetConfig;
   onChange: (v: SignageWidget["config"]) => void;
 }) => (
   <div className="space-y-2 rounded-lg border border-border p-3 bg-background-tertiary">

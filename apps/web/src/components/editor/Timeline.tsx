@@ -183,10 +183,11 @@ export const Timeline: React.FC = () => {
     return height;
   }, [tracks, getTrackHeight, widgets.length]);
 
-  const widgetColorMap: Record<
+  const defaultWidgetColor = { labelBg: "#3d3d3d", blockBg: "#4a4a4a", text: "#ffffff" };
+  const widgetColorMap: Partial<Record<
     SignageWidgetType,
     { labelBg: string; blockBg: string; text: string }
-  > = {
+  >> = {
     calendar: { labelBg: "#2e5c2e", blockBg: "#3a7a3a", text: "#e6ffe6" },
     chart: { labelBg: "#2e3a5c", blockBg: "#3a4a7a", text: "#e6edff" },
     clock: { labelBg: "#5c522e", blockBg: "#7a6e3a", text: "#fffae6" },
@@ -1160,8 +1161,8 @@ export const Timeline: React.FC = () => {
                   <div
                     className="w-full rounded-md px-2 py-1 text-[10px] font-medium uppercase tracking-wide shadow-sm"
                     style={{
-                      backgroundColor: widgetColorMap[widget.type].labelBg,
-                      color: widgetColorMap[widget.type].text,
+                      backgroundColor: (widgetColorMap[widget.type] ?? defaultWidgetColor).labelBg,
+                      color: (widgetColorMap[widget.type] ?? defaultWidgetColor).text,
                     }}
                   >
                     {widget.type}
@@ -1335,8 +1336,8 @@ export const Timeline: React.FC = () => {
                       style={{
                         left: blockLeft,
                         width: blockWidth,
-                        backgroundColor: widgetColorMap[widget.type].blockBg,
-                        color: widgetColorMap[widget.type].text,
+                        backgroundColor: (widgetColorMap[widget.type] ?? defaultWidgetColor).blockBg,
+                        color: (widgetColorMap[widget.type] ?? defaultWidgetColor).text,
                         opacity: isHidden ? 0.45 : 1,
                       }}
                       onClick={(e) => {
