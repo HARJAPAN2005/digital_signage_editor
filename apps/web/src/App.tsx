@@ -13,6 +13,17 @@ import { useProjectRecovery } from "./hooks/useProjectRecovery";
 
 import { SOCIAL_MEDIA_PRESETS, type SocialMediaCategory, type Project } from "@openreel/core";
 import { TooltipProvider } from "@openreel/ui";
+
+function isEditorProjectShape(data: unknown): data is Project {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.settings === "object" && d.settings !== null &&
+    typeof d.mediaLibrary === "object" && d.mediaLibrary !== null &&
+    typeof d.timeline === "object" && d.timeline !== null &&
+    Array.isArray((d.timeline as Record<string, unknown>).tracks)
+  );
+}
 import { setSignageAuth, getSignageLayout, isSignageLayoutsConnected } from "./services/signage-layouts-api";
 import { useSignageMediaStore } from "./stores/signage-media-store";
 
@@ -127,8 +138,21 @@ function App() {
         }
 
         const layout = await getSignageLayout(params.signageLayoutId!);
-        if (layout.layoutJson && typeof layout.layoutJson === "object") {
-          loadProject(layout.layoutJson as unknown as Project);
+        if (isEditorProjectShape(layout.layoutJson)) {
+          loadProject(layout.layoutJson);
+        } else {
+          // layoutJson was created outside the editor (e.g. dashboard "Create layout" form).
+          // Leave the store's empty Project in place and optionally adopt the layout's canvas size.
+          console.info("[Signage] Layout has no editor project state yet; starting from an empty timeline");
+          const canvas = (layout.layoutJson as Record<string, unknown> | null)?.canvas as
+            | Record<string, unknown>
+            | undefined;
+          if (canvas && typeof canvas.width === "number" && typeof canvas.height === "number") {
+            await useProjectStore.getState().updateSettings({
+              width: canvas.width,
+              height: canvas.height,
+            });
+          }
         }
         // In preview mode: hide all editing panels so only the canvas is visible.
         if (params.preview === "1") {
