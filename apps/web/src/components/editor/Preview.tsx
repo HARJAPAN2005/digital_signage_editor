@@ -698,6 +698,7 @@ export const Preview: React.FC = () => {
   >(new Map());
 
   const imageBitmapCacheRef = useRef<Map<string, ImageBitmap>>(new Map());
+  const pendingBitmapFetchesRef = useRef<Map<string, Promise<ImageBitmap | null>>>(new Map());
 
   useEffect(() => {
     rateRef.current = playbackRate;
@@ -720,6 +721,7 @@ export const Preview: React.FC = () => {
       bitmap.close();
     }
     imageBitmapCacheRef.current = new Map();
+    pendingBitmapFetchesRef.current.clear();
   }, []);
 
   const cleanupAudioResources = useCallback(() => {
@@ -1069,7 +1071,36 @@ export const Preview: React.FC = () => {
       canvasHeight: number,
     ): Promise<ImageBitmap | null> => {
       const mediaItem = getMediaItem(clip.mediaId);
-      if (!mediaItem?.blob) return null;
+
+      if (!mediaItem?.blob) {
+        // Fallback for image clips with no blob (e.g. signage CDN imports after save round-trip)
+        if (mediaItem?.type === "image" && mediaItem.originalUrl) {
+          const cached = imageBitmapCacheRef.current.get(clip.id);
+          if (cached) return cached;
+
+          const inflight = pendingBitmapFetchesRef.current.get(clip.id);
+          if (inflight) return inflight;
+
+          const url = mediaItem.originalUrl;
+          const fetchPromise: Promise<ImageBitmap | null> = (async () => {
+            try {
+              const resp = await fetch(url);
+              const blob = await resp.blob();
+              const bitmap = await createImageBitmap(blob);
+              imageBitmapCacheRef.current.set(clip.id, bitmap);
+              return bitmap;
+            } catch {
+              return null;
+            } finally {
+              pendingBitmapFetchesRef.current.delete(clip.id);
+            }
+          })();
+
+          pendingBitmapFetchesRef.current.set(clip.id, fetchPromise);
+          return fetchPromise;
+        }
+        return null;
+      }
 
       if (mediaItem.type === "image") {
         try {
@@ -2773,9 +2804,18 @@ export const Preview: React.FC = () => {
           if (imageBitmapCacheRef.current.has(clip.id)) continue;
 
           const mediaItem = getMediaItem(clip.mediaId);
-          if (mediaItem?.type === "image" && mediaItem.blob) {
+          if (mediaItem?.type === "image") {
             try {
-              const bitmap = await createImageBitmap(mediaItem.blob);
+              let bitmap: ImageBitmap;
+              if (mediaItem.blob) {
+                bitmap = await createImageBitmap(mediaItem.blob);
+              } else if (mediaItem.originalUrl) {
+                const resp = await fetch(mediaItem.originalUrl);
+                const fetchedBlob = await resp.blob();
+                bitmap = await createImageBitmap(fetchedBlob);
+              } else {
+                continue;
+              }
               imageBitmapCacheRef.current.set(clip.id, bitmap);
             } catch (error) {
               console.warn(
