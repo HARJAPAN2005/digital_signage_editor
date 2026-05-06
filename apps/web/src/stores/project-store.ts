@@ -103,7 +103,7 @@ export interface ProjectState {
   updateSettings: (settings: Partial<ProjectSettings>) => Promise<ActionResult>;
 
   // Media library actions
-  importMedia: (file: File) => Promise<ActionResult>;
+  importMedia: (file: File, sourceUrl?: string) => Promise<ActionResult>;
   deleteMedia: (mediaId: string) => Promise<ActionResult>;
   replaceMediaAsset: (mediaId: string, file: File, sourceFolder?: string) => Promise<ActionResult>;
   renameMedia: (mediaId: string, name: string) => Promise<ActionResult>;
@@ -402,6 +402,7 @@ export interface ProjectState {
   checkForRecovery: () => Promise<AutoSaveMetadata[]>;
   recoverFromAutoSave: (saveId: string) => Promise<boolean>;
   forceSave: () => Promise<void>;
+  getFullProject: () => Project;
 }
 
 /**
@@ -569,7 +570,7 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       // Media library actions
-      importMedia: async (file: File) => {
+      importMedia: async (file: File, sourceUrl?: string) => {
         const { project } = get();
 
         try {
@@ -675,6 +676,7 @@ export const useProjectStore = create<ProjectState>()(
             filmstripThumbnails:
               filmstripThumbnails.length > 0 ? filmstripThumbnails : undefined,
             sourceFile: { name: file.name, size: file.size, lastModified: file.lastModified },
+            originalUrl: sourceUrl ?? undefined,
           };
 
           const updatedProject = {

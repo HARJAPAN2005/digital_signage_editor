@@ -58,3 +58,6 @@ FEATURES_TWITTER.md
 .claude-tasks.md
 
 CLAUDE.md
+
+# Claude Code local config
+.claude/

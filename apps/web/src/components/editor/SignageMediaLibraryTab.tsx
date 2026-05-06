@@ -264,7 +264,7 @@ export const SignageMediaLibraryTab: React.FC = () => {
           type: item.type || blob.type,
         });
 
-        const result = await importMedia(file);
+        const result = await importMedia(file, fileUrl);
         if (result.success) {
           toast.success(
             "Imported from library",

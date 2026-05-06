@@ -36,6 +36,21 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@openreel/ui";
+import type { Project } from "@openreel/core";
+
+function stripForSignageSave(project: Project): Project {
+  return {
+    ...project,
+    mediaLibrary: {
+      items: project.mediaLibrary.items.map((item) => ({
+        ...item,
+        blob: null,
+        fileHandle: null,
+        waveformData: null,
+      })),
+    },
+  };
+}
 
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
@@ -95,7 +110,7 @@ export const Toolbar: React.FC = () => {
     if (!signageLayoutId) return;
     setIsSavingLayout(true);
     try {
-      const currentProject = useProjectStore.getState().project;
+      const currentProject = stripForSignageSave(useProjectStore.getState().getFullProject());
       await saveSignageLayout(signageLayoutId, {
         layoutJson: currentProject as unknown as Record<string, unknown>,
         isValid: true,
@@ -113,7 +128,7 @@ export const Toolbar: React.FC = () => {
     if (!signageLayoutId) return;
     setIsPublishingLayout(true);
     try {
-      const currentProject = useProjectStore.getState().project;
+      const currentProject = stripForSignageSave(useProjectStore.getState().getFullProject());
       await saveSignageLayout(signageLayoutId, {
         layoutJson: currentProject as unknown as Record<string, unknown>,
         isValid: true,
