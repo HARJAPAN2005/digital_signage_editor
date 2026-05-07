@@ -1,16 +1,20 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useSignageWidgetStore } from "../../../stores/signage-widget-store";
 import * as pdfjs from "pdfjs-dist";
 import type {
+  AudioWidgetConfig,
   CalendarConfig,
   ChartConfig,
   ClockConfig,
   CountdownConfig,
   IframeConfig,
+  ImageWidgetConfig,
+  LocalVideoConfig,
   PDFConfig,
   PowerPointConfig,
   SignageWidget,
   TickerConfig,
+  VideoWidgetConfig,
   WidgetConfig,
 } from "../../../types/widgets";
 
@@ -176,6 +180,18 @@ export const WidgetInspector: React.FC<WidgetInspectorProps> = ({ widget }) => {
       {widget.type === "calendar" && (
         <CalendarFields config={widget.config as CalendarConfig} onChange={updateConfig} />
       )}
+      {widget.type === "image" && (
+        <ImageFields config={widget.config as ImageWidgetConfig} onChange={updateConfig} />
+      )}
+      {widget.type === "video" && (
+        <VideoFields config={widget.config as VideoWidgetConfig} onChange={updateConfig} />
+      )}
+      {widget.type === "audio" && (
+        <AudioFields config={widget.config as AudioWidgetConfig} onChange={updateConfig} />
+      )}
+      {widget.type === "localVideo" && (
+        <LocalVideoFields config={widget.config as LocalVideoConfig} onChange={updateConfig} />
+      )}
       {(
         [
           "text",
@@ -189,10 +205,6 @@ export const WidgetInspector: React.FC<WidgetInspectorProps> = ({ widget }) => {
           "hls",
           "htmlPackage",
           "flash",
-          "localVideo",
-          "image",
-          "video",
-          "audio",
           "webpage",
           "embedded",
         ] as readonly string[]
@@ -537,6 +549,198 @@ const CalendarFields = ({ config, onChange }: { config: CalendarConfig; onChange
     <input type="number" className="w-full bg-background border border-border rounded px-2 py-1 text-xs" value={config.refreshInterval} onChange={(e) => onChange({ ...config, refreshInterval: Number(e.target.value) || 60 })} />
   </div>
 );
+
+const ImageFields = ({
+  config,
+  onChange,
+}: {
+  config: ImageWidgetConfig;
+  onChange: (v: ImageWidgetConfig) => void;
+}) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-2 rounded-lg border border-border p-3 bg-background-tertiary">
+      <label className="text-[10px] text-text-secondary">Image URL</label>
+      <input
+        className="w-full bg-background border border-border rounded px-2 py-1 text-xs"
+        value={config.imageUrl}
+        onChange={(e) => onChange({ ...config, imageUrl: e.target.value })}
+        placeholder="https://…"
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onChange({ ...config, imageUrl: URL.createObjectURL(file) });
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="text-[10px] px-2 py-1 rounded border border-border text-text-secondary bg-background hover:bg-background-elevated"
+      >
+        Upload image…
+      </button>
+      <label className="text-[10px] text-text-secondary block mt-1">Object fit</label>
+      <select
+        className="w-full bg-background border border-border rounded px-2 py-1 text-xs"
+        value={config.objectFit}
+        onChange={(e) => onChange({ ...config, objectFit: e.target.value as ImageWidgetConfig["objectFit"] })}
+      >
+        <option value="cover">Cover</option>
+        <option value="contain">Contain</option>
+      </select>
+    </div>
+  );
+};
+
+const VideoFields = ({
+  config,
+  onChange,
+}: {
+  config: VideoWidgetConfig;
+  onChange: (v: VideoWidgetConfig) => void;
+}) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-2 rounded-lg border border-border p-3 bg-background-tertiary">
+      <label className="text-[10px] text-text-secondary">Video URL</label>
+      <input
+        className="w-full bg-background border border-border rounded px-2 py-1 text-xs"
+        value={config.videoUrl}
+        onChange={(e) => onChange({ ...config, videoUrl: e.target.value })}
+        placeholder="https://…"
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onChange({ ...config, videoUrl: URL.createObjectURL(file) });
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="text-[10px] px-2 py-1 rounded border border-border text-text-secondary bg-background hover:bg-background-elevated"
+      >
+        Upload video…
+      </button>
+      <label className="text-xs flex items-center gap-2">
+        <input type="checkbox" checked={config.loop} onChange={(e) => onChange({ ...config, loop: e.target.checked })} />
+        Loop
+      </label>
+      <label className="text-xs flex items-center gap-2">
+        <input type="checkbox" checked={config.muted} onChange={(e) => onChange({ ...config, muted: e.target.checked })} />
+        Muted
+      </label>
+      <label className="text-xs flex items-center gap-2">
+        <input type="checkbox" checked={config.autoplay} onChange={(e) => onChange({ ...config, autoplay: e.target.checked })} />
+        Autoplay
+      </label>
+    </div>
+  );
+};
+
+const AudioFields = ({
+  config,
+  onChange,
+}: {
+  config: AudioWidgetConfig;
+  onChange: (v: AudioWidgetConfig) => void;
+}) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-2 rounded-lg border border-border p-3 bg-background-tertiary">
+      <label className="text-[10px] text-text-secondary">Audio URL</label>
+      <input
+        className="w-full bg-background border border-border rounded px-2 py-1 text-xs"
+        value={config.audioUrl}
+        onChange={(e) => onChange({ ...config, audioUrl: e.target.value })}
+        placeholder="https://…"
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onChange({ ...config, audioUrl: URL.createObjectURL(file) });
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="text-[10px] px-2 py-1 rounded border border-border text-text-secondary bg-background hover:bg-background-elevated"
+      >
+        Upload audio…
+      </button>
+      <label className="text-[10px] text-text-secondary block mt-1">Title</label>
+      <input
+        className="w-full bg-background border border-border rounded px-2 py-1 text-xs"
+        value={config.title}
+        onChange={(e) => onChange({ ...config, title: e.target.value })}
+        placeholder="Track title"
+      />
+    </div>
+  );
+};
+
+const LocalVideoFields = ({
+  config,
+  onChange,
+}: {
+  config: LocalVideoConfig;
+  onChange: (v: LocalVideoConfig) => void;
+}) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-2 rounded-lg border border-border p-3 bg-background-tertiary">
+      <label className="text-[10px] text-text-secondary">Video URL</label>
+      <input
+        className="w-full bg-background border border-border rounded px-2 py-1 text-xs"
+        value={config.videoUrl}
+        onChange={(e) => onChange({ ...config, videoUrl: e.target.value })}
+        placeholder="https://…"
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onChange({ ...config, videoUrl: URL.createObjectURL(file) });
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="text-[10px] px-2 py-1 rounded border border-border text-text-secondary bg-background hover:bg-background-elevated"
+      >
+        Upload video…
+      </button>
+      <label className="text-xs flex items-center gap-2">
+        <input type="checkbox" checked={config.loop} onChange={(e) => onChange({ ...config, loop: e.target.checked })} />
+        Loop
+      </label>
+      <label className="text-xs flex items-center gap-2">
+        <input type="checkbox" checked={config.muted} onChange={(e) => onChange({ ...config, muted: e.target.checked })} />
+        Muted
+      </label>
+    </div>
+  );
+};
 
 const JsonConfigFields = ({
   config,
