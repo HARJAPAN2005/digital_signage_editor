@@ -8,6 +8,7 @@ export interface ProjectSettings {
   readonly frameRate: number;
   readonly sampleRate: number;
   readonly channels: number;
+  readonly duration: number; // signage layout playback duration in seconds (separate from auto-computed timeline.duration)
 }
 
 export interface Project {

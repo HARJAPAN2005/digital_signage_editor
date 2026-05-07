@@ -49,6 +49,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -123,6 +124,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -200,6 +202,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -315,6 +318,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -475,6 +479,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -590,6 +595,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -699,6 +705,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -811,6 +818,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [
@@ -964,6 +972,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
     },
     timeline: {
       tracks: [

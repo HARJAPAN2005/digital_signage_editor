@@ -321,6 +321,7 @@ export function createProjectSettingsFromPreset(
     frameRate: preset.frameRate || 30,
     sampleRate: 48000,
     channels: 2,
+    duration: 60,
   };
 }
 

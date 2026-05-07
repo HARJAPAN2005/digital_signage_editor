@@ -261,6 +261,7 @@ export class AnimationImporter {
           frameRate: processedSchema.project.fps,
           sampleRate: 48000,
           channels: 2,
+          duration: 60,
         },
         mediaLibrary: {
           items: mediaItems,

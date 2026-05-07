@@ -12,6 +12,7 @@ import {
   Save,
   Upload,
   Loader2,
+  Monitor,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
@@ -38,8 +39,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
 } from "@openreel/ui";
 import type { Project } from "@openreel/core";
+import {
+  SIGNAGE_RESOLUTION_PRESETS,
+  findPresetByDimensions,
+} from "../../constants/signage-resolution-presets";
 
 function stripForSignageSave(project: Project): Project {
   return {
@@ -58,6 +64,7 @@ function stripForSignageSave(project: Project): Project {
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
   const forceSave = useProjectStore((state) => state.forceSave);
+  const updateSettings = useProjectStore((state) => state.updateSettings);
   const panels = useUIStore((s) => s.panels);
   const togglePanel = useUIStore((s) => s.togglePanel);
   const { mode: themeMode, toggleTheme } = useThemeStore();
@@ -117,6 +124,7 @@ export const Toolbar: React.FC = () => {
       await saveSignageLayout(signageLayoutId, {
         layoutJson: currentProject as unknown as Record<string, unknown>,
         isValid: true,
+        duration: currentProject.settings.duration,
       });
       toast.success("Layout saved", "Your changes were saved to the signage library.");
     } catch (err) {
@@ -135,6 +143,7 @@ export const Toolbar: React.FC = () => {
       await saveSignageLayout(signageLayoutId, {
         layoutJson: currentProject as unknown as Record<string, unknown>,
         isValid: true,
+        duration: currentProject.settings.duration,
       });
       await publishSignageLayout(signageLayoutId);
       toast.success("Layout published", "Layout is now live and available to devices.");
@@ -258,6 +267,68 @@ export const Toolbar: React.FC = () => {
       </div>
 
       <div className="flex-1" />
+
+      {isSignageSession ? (
+        <div className="flex items-center gap-2 mr-3">
+          {/* Resolution preset dropdown */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+                  >
+                    <Monitor size={13} />
+                    <span className="hidden sm:inline">
+                      {findPresetByDimensions(project.settings.width, project.settings.height)?.label
+                        ?? `${project.settings.width}×${project.settings.height}`}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Canvas resolution</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" sideOffset={8} className="w-52">
+              {SIGNAGE_RESOLUTION_PRESETS.map((preset) => (
+                <DropdownMenuItem
+                  key={preset.id}
+                  onClick={() => void updateSettings({ width: preset.width, height: preset.height })}
+                  className={
+                    project.settings.width === preset.width && project.settings.height === preset.height
+                      ? "text-primary"
+                      : ""
+                  }
+                >
+                  <span>{preset.label}</span>
+                  <span className="ml-auto text-[10px] text-text-muted font-mono">
+                    {preset.width}×{preset.height}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Duration input */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="inline-flex items-center gap-1">
+                <input
+                  type="number"
+                  min={1}
+                  value={project.settings.duration}
+                  onChange={(e) =>
+                    void updateSettings({ duration: Math.max(1, Number(e.target.value) || 60) })
+                  }
+                  className="w-14 rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-text-primary text-right tabular-nums focus:outline-none focus:border-primary/50 transition-colors"
+                />
+                <span className="text-xs text-text-muted">s</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Layout duration (seconds)</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : null}
 
       {isSignageSession ? (
         <div className="flex items-center gap-2 mr-2">
