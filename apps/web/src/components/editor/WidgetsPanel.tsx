@@ -12,14 +12,26 @@ const WIDGETS: {
   icon: string;
   label: string;
 }[] = [
+  { type: "audio", icon: "🎵", label: "Audio" },
   { type: "calendar", icon: "📅", label: "Calendar" },
   { type: "chart", icon: "📊", label: "Chart" },
   { type: "clock", icon: "🕐", label: "Clock" },
   { type: "countdown", icon: "⏱️", label: "Countdown" },
+  { type: "datasetTicker", icon: "📈", label: "Dataset Ticker" },
+  { type: "datasetView", icon: "📊", label: "Dataset Table" },
+  { type: "hls", icon: "📡", label: "Live Stream" },
+  { type: "htmlPackage", icon: "🧩", label: "HTML Package" },
   { type: "iframe", icon: "🪟", label: "IFrame" },
+  { type: "image", icon: "🖼️", label: "Image" },
+  { type: "notification", icon: "🔔", label: "Notification" },
   { type: "pdf", icon: "📄", label: "PDF" },
   { type: "powerpoint", icon: "📑", label: "PowerPoint" },
+  { type: "spacer", icon: "▫️", label: "Spacer" },
+  { type: "subPlaylist", icon: "🎞️", label: "Sub-Playlist" },
+  { type: "text", icon: "📝", label: "Text" },
   { type: "ticker", icon: "📜", label: "Ticker" },
+  { type: "video", icon: "🎬", label: "Video" },
+  { type: "videoIn", icon: "📹", label: "Video Input" },
 ];
 
 export const WidgetsPanel: React.FC = () => {
