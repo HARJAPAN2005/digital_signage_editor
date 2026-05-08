@@ -43,6 +43,8 @@ import {
   type AutoSaveMetadata,
 } from "../services/auto-save";
 import { useEngineStore } from "./engine-store";
+import { useSignageWidgetStore } from "./signage-widget-store";
+import type { SignageWidget } from "../types/widgets";
 import { getMediaBridge, initializeMediaBridge } from "../bridges/media-bridge";
 import {
   createEmptyProject,
@@ -479,6 +481,16 @@ export const useProjectStore = create<ProjectState>()(
           clipRedoStack: [],
           error: null,
         });
+
+        // Restore signage widgets to their store
+        if (project.signageWidgets && Array.isArray(project.signageWidgets)) {
+          useSignageWidgetStore.getState().setWidgets(
+            project.signageWidgets as unknown as SignageWidget[],
+          );
+        } else {
+          // Empty layout or non-signage project — clear any stale widgets
+          useSignageWidgetStore.getState().setWidgets([]);
+        }
 
         // Auto-restore placeholder assets from saved FileSystemFileHandles (same machine)
         const placeholders = fixedProject.mediaLibrary.items.filter(

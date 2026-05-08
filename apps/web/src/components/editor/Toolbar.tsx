@@ -41,13 +41,24 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
 } from "@openreel/ui";
-import type { Project } from "@openreel/core";
+import type { Project, SerializedSignageWidget } from "@openreel/core";
 import {
   SIGNAGE_RESOLUTION_PRESETS,
   findPresetByDimensions,
 } from "../../constants/signage-resolution-presets";
 
 function stripForSignageSave(project: Project): Project {
+  const widgets = useSignageWidgetStore.getState().widgets;
+
+  // Strip non-serializable File fields from PDF and PowerPoint widget configs
+  // (matches the blob-stripping pattern for media items).
+  const serializedWidgets = widgets.map((widget) => {
+    if (widget.type === "pdf" || widget.type === "powerpoint") {
+      return { ...widget, config: { ...widget.config, file: null } };
+    }
+    return widget;
+  });
+
   return {
     ...project,
     mediaLibrary: {
@@ -58,6 +69,7 @@ function stripForSignageSave(project: Project): Project {
         waveformData: null,
       })),
     },
+    signageWidgets: serializedWidgets as unknown as readonly SerializedSignageWidget[],
   };
 }
 

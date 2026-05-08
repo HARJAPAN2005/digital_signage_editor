@@ -551,8 +551,18 @@ export const Preview: React.FC = () => {
       if (end > maxEnd) maxEnd = end;
     }
 
+    for (const widget of widgets) {
+      const end = widget.startTime + widget.duration;
+      if (end > maxEnd) maxEnd = end;
+    }
+
+    // If still 0 (widget-only or empty layout), fall back to the user-set
+    // settings.duration so the slider has a meaningful range.
+    if (maxEnd === 0) {
+      return project.settings.duration ?? 60;
+    }
     return maxEnd;
-  }, [project.timeline.tracks, allTextClips, allShapeClips]);
+  }, [project.timeline.tracks, allTextClips, allShapeClips, widgets, project.settings.duration]);
 
   // RenderBridge is guaranteed to be initialized before Preview renders (see EditorInterface)
   useEffect(() => {
