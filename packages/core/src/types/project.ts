@@ -8,6 +8,28 @@ export interface ProjectSettings {
   readonly frameRate: number;
   readonly sampleRate: number;
   readonly channels: number;
+  readonly duration: number; // signage layout playback duration in seconds (separate from auto-computed timeline.duration)
+}
+
+/**
+ * Serialized form of a signage widget. Mirrors the SignageWidget type defined in
+ * apps/web/src/types/widgets.ts but kept structurally typed here to avoid a
+ * cross-package dependency from core to the web app's widget definitions.
+ */
+export interface SerializedSignageWidget {
+  readonly id: string;
+  readonly type: string;
+  readonly startTime: number;
+  readonly duration: number;
+  readonly config: Record<string, unknown>;
+  readonly locked?: boolean;
+  readonly hidden?: boolean;
+  readonly layout?: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
 }
 
 export interface Project {
@@ -22,6 +44,7 @@ export interface Project {
   readonly shapeClips?: ShapeClip[];
   readonly svgClips?: SVGClip[];
   readonly stickerClips?: StickerClip[];
+  readonly signageWidgets?: readonly SerializedSignageWidget[];
 }
 
 export interface MediaLibrary {

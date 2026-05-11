@@ -13,14 +13,26 @@ const WIDGETS: {
   label: string;
   description: string;
 }[] = [
+  { type: "audio", icon: "🎵", label: "Audio", description: "Play background audio or a music track." },
   { type: "calendar", icon: "📅", label: "Calendar", description: "Display event calendars and schedules." },
   { type: "chart", icon: "📊", label: "Chart", description: "Show live or static chart data overlays." },
   { type: "clock", icon: "🕐", label: "Clock", description: "Display real-time timezone-aware clocks." },
   { type: "countdown", icon: "⏱️", label: "Countdown", description: "Run countdowns for launches and events." },
+  { type: "datasetTicker", icon: "📈", label: "Dataset Ticker", description: "Scrolling ticker driven by a dataset of entries." },
+  { type: "datasetView", icon: "📊", label: "Dataset Table", description: "Display a tabular dataset with custom rows and columns." },
+  { type: "hls", icon: "📡", label: "Live Stream", description: "Play HLS or RTMP live video streams." },
+  { type: "htmlPackage", icon: "🧩", label: "HTML Package", description: "Render custom sandboxed HTML content." },
   { type: "iframe", icon: "🪟", label: "IFrame", description: "Embed a website preview with custom sizing and position." },
+  { type: "image", icon: "🖼️", label: "Image", description: "Display a static or animated image." },
+  { type: "notification", icon: "🔔", label: "Notification", description: "Show banner-style notifications and alerts." },
   { type: "pdf", icon: "📄", label: "PDF", description: "Cycle through PDF pages in timeline." },
   { type: "powerpoint", icon: "📑", label: "PowerPoint", description: "Convert and play PowerPoint slides." },
+  { type: "spacer", icon: "▫️", label: "Spacer", description: "Empty colored spacer for layout." },
+  { type: "subPlaylist", icon: "🎞️", label: "Sub-Playlist", description: "Cycle through a list of items at a fixed interval." },
+  { type: "text", icon: "📝", label: "Text", description: "Display formatted text with custom styling." },
   { type: "ticker", icon: "📜", label: "Ticker", description: "Scrollable breaking-news style text strips." },
+  { type: "video", icon: "🎬", label: "Video", description: "Play a looping or on-demand video clip." },
+  { type: "videoIn", icon: "📹", label: "Video Input", description: "Display a video input source status placeholder." },
 ];
 
 export const SignageToolbar: React.FC = () => {

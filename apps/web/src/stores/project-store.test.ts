@@ -106,6 +106,7 @@ describe("ProjectStore", () => {
           frameRate: 24,
           sampleRate: 44100,
           channels: 2,
+          duration: 60,
         },
         mediaLibrary: { items: [] },
         timeline: {
@@ -156,6 +157,7 @@ describe("ProjectStore", () => {
           frameRate: 30,
           sampleRate: 48000,
           channels: 2,
+          duration: 60,
         },
         mediaLibrary: { items: [mockMediaItem] },
         timeline: {
@@ -368,6 +370,7 @@ describe("ProjectStore", () => {
           frameRate: 30,
           sampleRate: 48000,
           channels: 2,
+          duration: 60,
         },
         mediaLibrary: {
           items: [
@@ -426,6 +429,7 @@ describe("ProjectStore", () => {
           frameRate: 30,
           sampleRate: 48000,
           channels: 2,
+          duration: 60,
         },
         mediaLibrary: { items: [] },
         timeline: {
@@ -581,6 +585,7 @@ describe("ProjectStore", () => {
           frameRate: 30,
           sampleRate: 48000,
           channels: 2,
+          duration: 60,
         },
         mediaLibrary: { items: [] },
         timeline: {

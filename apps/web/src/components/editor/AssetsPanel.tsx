@@ -1,6 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
-  Maximize2,
   X,
   Image as ImageIcon,
   Film,
@@ -1007,12 +1006,6 @@ export const AssetsPanel: React.FC = () => {
           Assets
         </span>
         <div className="flex gap-1">
-          <IconButton
-            icon={Plus}
-            onClick={triggerFileInput}
-            title="Import media"
-          />
-          <IconButton icon={Maximize2} title="Maximize panel" />
           <IconButton
             icon={X}
             title="Hide assets panel"

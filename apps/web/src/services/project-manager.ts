@@ -220,6 +220,7 @@ class ProjectManager {
       frameRate: 30,
       sampleRate: 48000,
       channels: 2,
+      duration: 60,
       ...template.settings,
       ...options.settings,
     };

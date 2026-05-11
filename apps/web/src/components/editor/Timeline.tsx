@@ -10,21 +10,12 @@ import {
   Redo2,
   Layers,
   Maximize2,
-  Film,
-  Music,
-  Image,
-  Type,
-  Shapes,
   Scissors,
   ChevronUp,
   ChevronDown,
   Trash2,
-  Plus,
-  ChevronDown as ChevronDownIcon,
-  Magnet,
   Rows3,
   Rows2,
-  EyeOff,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useProjectStore } from "../../stores/project-store";
@@ -43,11 +34,6 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@openreel/ui";
 import {
   Playhead,
@@ -72,7 +58,6 @@ export const Timeline: React.FC = () => {
     canRedo,
     splitClip,
     removeClip,
-    addTrack,
     reorderTrack,
     deleteShapeClip,
     deleteSVGClip,
@@ -113,8 +98,6 @@ export const Timeline: React.FC = () => {
     clearSelection,
     getSelectedClipIds,
     snapSettings,
-    toggleSnap,
-    setPanelVisible,
   } = useUIStore();
   const selectedItems = useUIStore((state) => state.selectedItems);
   const widgets = useSignageWidgetStore((state) => state.widgets);
@@ -900,44 +883,6 @@ export const Timeline: React.FC = () => {
 
           <div className="w-px h-6 bg-border mx-1" />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors"
-                title="Add new track"
-              >
-                <Plus size={14} />
-                <span className="text-[11px] font-semibold">Add Track</span>
-                <ChevronDownIcon size={12} className="ml-0.5 opacity-60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-48">
-              <DropdownMenuItem onClick={() => addTrack("video")}>
-                <Film size={16} className="text-green-400" />
-                <span>Video Track</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addTrack("audio")}>
-                <Music size={16} className="text-blue-400" />
-                <span>Audio Track</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => addTrack("image")}>
-                <Image size={16} className="text-purple-400" />
-                <span>Image Track</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addTrack("text")}>
-                <Type size={16} className="text-yellow-400" />
-                <span>Text Track</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addTrack("graphics")}>
-                <Shapes size={16} className="text-pink-400" />
-                <span>Graphics Track</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <div className="w-px h-6 bg-border mx-1" />
-
           <Popover open={showLayersPanel} onOpenChange={setShowLayersPanel}>
             <PopoverTrigger asChild>
               <button
@@ -1017,20 +962,6 @@ export const Timeline: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          <div className="w-px h-6 bg-border mx-1" />
-
-          <button
-            onClick={toggleSnap}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${
-              snapSettings.enabled
-                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                : "hover:bg-background-elevated text-text-muted hover:text-text-secondary"
-            }`}
-            title={snapSettings.enabled ? "Disable snapping" : "Enable snapping"}
-          >
-            <Magnet size={14} />
-            <span className="text-[10px] font-medium tracking-wide">SNAP</span>
-          </button>
         </div>
 
         <div className="font-mono text-primary text-sm font-bold tracking-wider bg-background-tertiary px-4 py-1.5 rounded-lg border border-primary/20 shadow-[0_0_12px_rgba(34,197,94,0.15)]">
@@ -1081,11 +1012,6 @@ export const Timeline: React.FC = () => {
               <span className="text-base font-medium">+</span>
             </button>
           </div>
-          <IconButton
-            icon={EyeOff}
-            onClick={() => setPanelVisible("timeline", false)}
-            title="Hide timeline"
-          />
           <IconButton icon={Maximize2} title="Maximize timeline" />
         </div>
       </div>

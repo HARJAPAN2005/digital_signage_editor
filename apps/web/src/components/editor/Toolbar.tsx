@@ -6,17 +6,17 @@ import {
   Moon,
   SunMoon,
   X,
-  FileCode,
   History,
   Download,
-  Eye,
-  EyeOff,
+  Layers,
   Save,
   Upload,
   Loader2,
+  Monitor,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
+import type { PanelId } from "../../stores/ui-store";
 import { useThemeStore } from "../../stores/theme-store";
 import { useTimelineStore } from "../../stores/timeline-store";
 import { useSignageWidgetStore } from "../../stores/signage-widget-store";
@@ -35,10 +35,30 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
 } from "@openreel/ui";
-import type { Project } from "@openreel/core";
+import type { Project, SerializedSignageWidget } from "@openreel/core";
+import {
+  SIGNAGE_RESOLUTION_PRESETS,
+  findPresetByDimensions,
+} from "../../constants/signage-resolution-presets";
 
 function stripForSignageSave(project: Project): Project {
+  const widgets = useSignageWidgetStore.getState().widgets;
+
+  // Strip non-serializable File fields from PDF and PowerPoint widget configs
+  // (matches the blob-stripping pattern for media items).
+  const serializedWidgets = widgets.map((widget) => {
+    if (widget.type === "pdf" || widget.type === "powerpoint") {
+      return { ...widget, config: { ...widget.config, file: null } };
+    }
+    return widget;
+  });
+
   return {
     ...project,
     mediaLibrary: {
@@ -49,12 +69,14 @@ function stripForSignageSave(project: Project): Project {
         waveformData: null,
       })),
     },
+    signageWidgets: serializedWidgets as unknown as readonly SerializedSignageWidget[],
   };
 }
 
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
   const forceSave = useProjectStore((state) => state.forceSave);
+  const updateSettings = useProjectStore((state) => state.updateSettings);
   const panels = useUIStore((s) => s.panels);
   const togglePanel = useUIStore((s) => s.togglePanel);
   const { mode: themeMode, toggleTheme } = useThemeStore();
@@ -114,6 +136,7 @@ export const Toolbar: React.FC = () => {
       await saveSignageLayout(signageLayoutId, {
         layoutJson: currentProject as unknown as Record<string, unknown>,
         isValid: true,
+        duration: currentProject.settings.duration,
       });
       toast.success("Layout saved", "Your changes were saved to the signage library.");
     } catch (err) {
@@ -132,6 +155,7 @@ export const Toolbar: React.FC = () => {
       await saveSignageLayout(signageLayoutId, {
         layoutJson: currentProject as unknown as Record<string, unknown>,
         isValid: true,
+        duration: currentProject.settings.duration,
       });
       await publishSignageLayout(signageLayoutId);
       toast.success("Layout published", "Layout is now live and available to devices.");
@@ -217,88 +241,106 @@ export const Toolbar: React.FC = () => {
         <div className="h-6 w-px bg-border hidden md:block" />
 
         <div className="hidden sm:flex items-center gap-0.5 pl-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => togglePanel("mediaLibrary")}
-                className={`p-2 rounded-lg transition-colors ${
-                  (panels.mediaLibrary?.visible ?? true)
-                    ? "text-text-secondary hover:bg-background-elevated hover:text-text-primary"
-                    : "text-text-muted hover:bg-background-elevated hover:text-text-secondary"
-                }`}
-              >
-                {(panels.mediaLibrary?.visible ?? true) ? (
-                  <Eye size={16} />
-                ) : (
-                  <EyeOff size={16} />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                {(panels.mediaLibrary?.visible ?? true)
-                  ? "Hide assets panel"
-                  : "Show assets panel"}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => togglePanel("inspector")}
-                className={`p-2 rounded-lg transition-colors ${
-                  (panels.inspector?.visible ?? true)
-                    ? "text-text-secondary hover:bg-background-elevated hover:text-text-primary"
-                    : "text-text-muted hover:bg-background-elevated hover:text-text-secondary"
-                }`}
-              >
-                {(panels.inspector?.visible ?? true) ? (
-                  <Eye size={16} />
-                ) : (
-                  <EyeOff size={16} />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                {(panels.inspector?.visible ?? true)
-                  ? "Hide inspector"
-                  : "Show inspector"}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => togglePanel("timeline")}
-                className={`p-2 rounded-lg transition-colors ${
-                  (panels.timeline?.visible ?? true)
-                    ? "text-text-secondary hover:bg-background-elevated hover:text-text-primary"
-                    : "text-text-muted hover:bg-background-elevated hover:text-text-secondary"
-                }`}
-              >
-                {(panels.timeline?.visible ?? true) ? (
-                  <Eye size={16} />
-                ) : (
-                  <EyeOff size={16} />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                {(panels.timeline?.visible ?? true)
-                  ? "Hide timeline"
-                  : "Show timeline"}
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-2 rounded-lg transition-colors text-text-secondary hover:bg-background-elevated hover:text-text-primary"
+                  >
+                    <Layers size={16} />
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Show / hide panels</p>
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="start" sideOffset={8} className="w-44">
+              {(
+                [
+                  { id: "mediaLibrary" as PanelId, label: "Assets panel" },
+                  { id: "inspector" as PanelId, label: "Inspector" },
+                  { id: "timeline" as PanelId, label: "Timeline" },
+                ] as const
+              ).map(({ id, label }) => (
+                <DropdownMenuCheckboxItem
+                  key={id}
+                  checked={panels[id]?.visible ?? true}
+                  onCheckedChange={() => togglePanel(id)}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       <div className="flex-1" />
+
+      {isSignageSession ? (
+        <div className="flex items-center gap-2 mr-3">
+          {/* Resolution preset dropdown */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-background-elevated hover:text-text-primary"
+                  >
+                    <Monitor size={13} />
+                    <span className="hidden sm:inline">
+                      {findPresetByDimensions(project.settings.width, project.settings.height)?.label
+                        ?? `${project.settings.width}×${project.settings.height}`}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Canvas resolution</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" sideOffset={8} className="w-52">
+              {SIGNAGE_RESOLUTION_PRESETS.map((preset) => (
+                <DropdownMenuItem
+                  key={preset.id}
+                  onClick={() => void updateSettings({ width: preset.width, height: preset.height })}
+                  className={
+                    project.settings.width === preset.width && project.settings.height === preset.height
+                      ? "text-primary"
+                      : ""
+                  }
+                >
+                  <span>{preset.label}</span>
+                  <span className="ml-auto text-[10px] text-text-muted font-mono">
+                    {preset.width}×{preset.height}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Duration input */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="inline-flex items-center gap-1">
+                <input
+                  type="number"
+                  min={1}
+                  value={project.settings.duration}
+                  onChange={(e) =>
+                    void updateSettings({ duration: Math.max(1, Number(e.target.value) || 60) })
+                  }
+                  className="w-14 rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-text-primary text-right tabular-nums focus:outline-none focus:border-primary/50 transition-colors"
+                />
+                <span className="text-xs text-text-muted">s</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Layout duration (seconds)</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : null}
 
       {isSignageSession ? (
         <div className="flex items-center gap-2 mr-2">
@@ -373,20 +415,6 @@ export const Toolbar: React.FC = () => {
           </TooltipTrigger>
           <TooltipContent>
             <p>Theme: {themeMode}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => useUIStore.getState().openModal("scriptView")}
-              className="p-2 rounded-lg hover:bg-background-elevated text-text-secondary hover:text-text-primary transition-colors"
-            >
-              <FileCode size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Project JSON - Export/Import</p>
           </TooltipContent>
         </Tooltip>
 

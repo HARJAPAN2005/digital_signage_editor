@@ -64,6 +64,7 @@ interface SignageWidgetState {
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<SignageWidget>) => void;
   updateWidgetConfig: (id: string, config: WidgetConfig) => void;
+  setWidgets: (widgets: SignageWidget[]) => void;
 }
 
 export const defaultConfigs: DefaultConfigs = {
@@ -243,4 +244,5 @@ export const useSignageWidgetStore = create<SignageWidgetState>((set) => ({
         widget.id === id ? { ...widget, config } : widget,
       ),
     })),
+  setWidgets: (widgets) => set({ widgets }),
 }));

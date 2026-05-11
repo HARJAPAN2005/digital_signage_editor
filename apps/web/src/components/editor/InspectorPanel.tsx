@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { ChevronDown, Zap, Captions, Loader2, EyeOff } from "lucide-react";
+import { ChevronDown, Zap, Captions, Loader2 } from "lucide-react";
 import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
 import { useEngineStore } from "../../stores/engine-store";
@@ -185,7 +185,6 @@ export const InspectorPanel: React.FC = () => {
     useProjectStore();
   const project = useProjectStore((state) => state.project);
   const { getSelectedClipIds } = useUIStore();
-  const setPanelVisible = useUIStore((state) => state.setPanelVisible);
   const inspectorWidth = useUIStore((state) => state.panels.inspector.width ?? 320);
   const selectedItems = useUIStore((state) => state.selectedItems);
   const widgets = useSignageWidgetStore((state) => state.widgets);
@@ -622,14 +621,6 @@ export const InspectorPanel: React.FC = () => {
           <h3 className="text-sm font-bold text-text-primary tracking-tight">
             Inspector
           </h3>
-          <button
-            type="button"
-            onClick={() => setPanelVisible("inspector", false)}
-            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-background-tertiary transition-colors shrink-0"
-            title="Hide inspector"
-          >
-            <EyeOff size={16} />
-          </button>
         </div>
 
         {selectedWidget ? (
